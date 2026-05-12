@@ -482,6 +482,9 @@ docker compose up -d --force-recreate --no-deps atlas
 
 Bila Anda sengaja menjalankan ulang `solr-atlas-init`, skrip di repo sudah menganggap core yang sudah ada sebagai sukses (idempotent).
 
+**Atlas — log HBase `127.0.0.1:2181` / `Connection refused`**  
+`atlas.graph.storage.hbase.zookeeper.quorum` harus berisi **hostname saja** (mis. `hbase`), bukan `hbase:2181`; port pakai **`atlas.graph.storage.hbase.zookeeper.property.clientPort=2181`**. Format `host:2181` sering membuat klien memakai default `localhost:2181` di dalam container.
+
 ---
 
 ## 9. Berkas pendukung di repositori
