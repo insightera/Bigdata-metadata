@@ -154,6 +154,7 @@ services:
       retries: 5
 
   # MinIO bucket initializer
+  # staging = landing raw dari sumber (sebelum Medallion); bronze/silver/gold = lapisan lakehouse
   minio-init:
     image: minio/mc:latest
     container_name: minio-init
@@ -164,12 +165,13 @@ services:
     entrypoint: >
       /bin/sh -c "
         mc alias set local http://minio:9000 minioadmin minioadmin123;
+        mc mb --ignore-existing local/staging;
         mc mb --ignore-existing local/bronze;
         mc mb --ignore-existing local/silver;
         mc mb --ignore-existing local/gold;
         mc mb --ignore-existing local/warehouse;
         mc mb --ignore-existing local/airflow-logs;
-        echo '✅ MinIO buckets created: bronze, silver, gold, warehouse, airflow-logs';
+        echo '✅ MinIO buckets created: staging, bronze, silver, gold, warehouse, airflow-logs';
       "
 
   # ─────────────────────────────────────────────

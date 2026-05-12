@@ -30,7 +30,7 @@ Diagram berikut memetakan tahapan **Sandbox → Production** hingga dekomisionin
 
 | Tahapan siklus (gambar) | Padanan operasional di stack |
 |-------------------------|------------------------------|
-| Domain creation, asset selection | Namespace/bucket MinIO (`bronze`, `silver`, `gold`), DAG Airflow `metadata_lakehouse_pipeline`, konteks domain di Atlas (qualifiedName, glossary). |
+| Domain creation, asset selection | Namespace/bucket MinIO (`staging`, `bronze`, `silver`, `gold`), DAG Airflow `metadata_lakehouse_pipeline`, konteks domain di Atlas (qualifiedName, glossary). |
 | Asset created, raw (4) | Tabel/entity Bronze + metadata teknis pertama ke Atlas (REST/hook). |
 | Description, glossary, lineage, graph (5–8) via API (9) | Silver: enrichment lewat **Atlas REST API** (classification, business metadata, lineage). |
 | Asset published (10) | Gold: aset siap konsumsi; metadata KPI/governance terpasang. |
@@ -264,6 +264,7 @@ Sumber data → Staging / Bronze → Silver → Gold
 
 | Layer | Storage | Jenis metadata (sesuai diagram pipeline) |
 |-------|---------|----------------------------------------|
+| **Staging** | `s3a://staging/` | Landing data mentah dari sumber (belum normalisasi Medallion) |
 | **Bronze** | `s3a://bronze/` | Raw technical, raw lineage, raw profiling, raw classification |
 | **Silver** | `s3a://silver/` | Clean, quality, transformation lineage, business, compliance |
 | **Gold** | `s3a://gold/` | Business, KPI, AI, consumption, advanced lineage |
@@ -332,7 +333,8 @@ docker compose up -d airflow-webserver airflow-scheduler
 
 | Bucket | Fungsi |
 |--------|--------|
-| bronze | Raw ingestion |
+| staging | Landing raw dari sumber ke MinIO |
+| bronze | Raw ingestion ke layer Medallion |
 | silver | Data terkurasi |
 | gold | Data siap bisnis |
 | warehouse | Penyimpanan tabel Iceberg |

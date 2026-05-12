@@ -119,7 +119,7 @@ print_ui_info() {
   echo -e "  ${YELLOW}📦 MinIO Console (S3)${NC}"
   echo -e "     URL  : ${GREEN}http://localhost:9001${NC}"
   echo -e "     Login: ${BOLD}minioadmin / minioadmin123${NC}"
-  echo -e "     Buckets: bronze, silver, gold, warehouse"
+  echo -e "     Buckets: staging, bronze, silver, gold, warehouse"
   echo ""
   echo -e "  ${YELLOW}🧱 Apache HBase${NC} (Atlas JanusGraph)"
   echo -e "     Master UI: ${GREEN}http://localhost:16010${NC}"
