@@ -75,17 +75,24 @@ services:
     networks: [lakehouse-net]
     environment:
       SOLR_HEAP: 512m
+      # Di banyak host Docker ulimit 1024 — matikan cek agresif Solr (dev/lab)
+      SOLR_ULIMIT_CHECKS: "false"
     volumes:
       - solr-data:/var/solr
     ports:
       - "${LHMETA_SOLR_PORT:-18984}:8983"
     healthcheck:
-      # Image solr resmi: wget (tanpa curl). GET ping + 127.0.0.1 (hindari localhost → IPv6).
-      test: ["CMD-SHELL", "wget -qO/dev/null 'http://127.0.0.1:8983/solr/admin/ping?wt=json' || exit 1"]
-      interval: 10s
-      timeout: 10s
-      retries: 40
-      start_period: 120s
+      # /bin/sh (dash) mem-parse -qO/dev/null ambigu; ? di URL perlu quoting.
+      # Cek port dulu (nc), lalu GET ping — agar cepat healthy untuk depends_on Atlas.
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8983 2>/dev/null || wget -q -T 5 -O /dev/null 'http://127.0.0.1:8983/solr/admin/ping?wt=json'"]
+      interval: 5s
+      timeout: 8s
+      retries: 30
+      start_period: 60s
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
 
   # ─────────────────────────────────────────────
   # SOLR — init core JanusGraph/Atlas (vertex_index, edge_index, fulltext_index)
