@@ -282,7 +282,7 @@ Port **di mesin host** memakai rentang 15xxx–22xxx agar tidak bentrok dengan M
 | Apache Spark Master + Workers | `apache/spark:3.5.1-scala2.12-java17-python3-ubuntu` | **18080** (UI), **17077** (RPC) | http://localhost:18080 |
 | Apache Airflow | apache/airflow:2.9.1 | **18681** | http://localhost:18681 |
 | MinIO | minio/minio:latest | **19000** (S3 API), **19001** (console) | http://localhost:19001 |
-| Apache Solr | solr:8.11 | **18984** | http://localhost:18984/solr/ — core **vertex_index**, **edge_index**, **fulltext_index** (JanusGraph) dibuat oleh `solr-atlas-init` |
+| Apache Solr | solr:8.11.2 | **18984** | http://localhost:18984/solr/ — core **vertex_index**, **edge_index**, **fulltext_index** (JanusGraph) dibuat oleh `solr-atlas-init` |
 | Apache HBase | harisekhon/hbase:2.1 | **19010** | http://localhost:19010 |
 | Apache Atlas | sburn/apache-atlas:2.3.0 | **22100** | http://localhost:22100 |
 | Hive Metastore | apache/hive:4.0.0 | **19083** | `thrift://localhost:19083` |
