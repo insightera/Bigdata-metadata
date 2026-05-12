@@ -94,9 +94,9 @@ services:
     ports:
       - "${LHMETA_SOLR_PORT:-18984}:8983"
     healthcheck:
-      # /bin/sh (dash) mem-parse -qO/dev/null ambigu; ? di URL perlu quoting.
-      # Cek port dulu (nc), lalu GET ping — agar cepat healthy untuk depends_on Atlas.
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 8983 2>/dev/null || wget -q -T 5 -O /dev/null 'http://127.0.0.1:8983/solr/admin/ping?wt=json'"]
+      # Wajib GET ping — jangan pakai "nc || wget": bila nc sukses, wget tidak jalan
+      # dan service dianggap healthy padahal Solr belum siap (init gagal ping ke solr:8983).
+      test: ["CMD-SHELL", "wget -q -T 5 -O /dev/null 'http://127.0.0.1:8983/solr/admin/ping?wt=json'"]
       interval: 5s
       timeout: 8s
       retries: 30

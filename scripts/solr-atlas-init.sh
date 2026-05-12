@@ -12,7 +12,7 @@ CORES=(vertex_index edge_index fulltext_index)
 echo "Menunggu Solr di ${SOLR_URL} ..."
 ready=0
 for _ in {1..90}; do
-  if wget -q -O /dev/null "${SOLR_URL}/solr/admin/ping?wt=json" 2>/dev/null; then
+  if wget -q -T 5 -O /dev/null "${SOLR_URL}/solr/admin/ping?wt=json" 2>/dev/null; then
     ready=1
     break
   fi

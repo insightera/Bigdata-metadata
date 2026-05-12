@@ -438,7 +438,7 @@ Container yang berhenti **masih mengunci volume**; hapus container Kafka dulu, b
 docker volume ls | grep kafka-data
 docker compose stop kafka
 docker compose rm -f kafka
-docker volume rm NAMA_VOLUME_DARI_LS   # contoh: bigdata-metadata_kafka-data
+docker volume rm bigdata-metadata_kafka-data   # ganti dengan output `docker volume ls | grep kafka-data` (bukan teks placeholder NAMA_*)
 docker compose up -d kafka
 docker compose logs kafka --tail 20
 ```
@@ -451,12 +451,27 @@ Reset berpasangan ZooKeeper + Kafka bila perlu:
 docker volume ls | grep -E 'kafka-data|zookeeper-data'
 docker compose stop kafka zookeeper
 docker compose rm -f kafka zookeeper
-docker volume rm NAMA_KAFKA_VOLUME NAMA_ZOOKEEPER_VOLUME
+docker volume rm bigdata-metadata_kafka-data bigdata-metadata_zookeeper-data   # ganti dari: docker volume ls | grep -E 'kafka-data|zookeeper-data'
 docker compose up -d zookeeper kafka
 ```
 
 **Solr — `solr-atlas-init` exit 8 (wget / HTTP error)**  
-Skrip init memanggil API Solr `CREATE` core; **exit 8** biasanya respons error Solr (mis. konfigurasi core tidak valid). Cek: `docker compose logs solr-atlas-init`. Pastikan repositori berisi **`solr/atlas-config/index_synonyms.txt`** (direferensikan `schema.xml`); bila core setengah jadi, hapus volume dev **`solr-data`** lalu ulangi `docker compose up -d solr-atlas-init`.
+Skrip init memanggil API Solr `CREATE` core; **exit 8** biasanya respons error Solr (mis. konfigurasi core tidak valid). Cek: `docker compose logs solr-atlas-init`. Pastikan repositori berisi **`solr/atlas-config/index_synonyms.txt`** (direferensikan `schema.xml`); bila core setengah jadi, hapus volume dev Solr lalu ulangi init.
+
+**Solr — init exit 1, log: “Solr tidak merespon …”**  
+Biasanya healthcheck Solr sudah diperbaiki di `docker-compose.yml` (harus sukses **GET** `/solr/admin/ping`, bukan cuma port terbuka). `git pull` lalu `docker compose up -d solr` sampai healthy, baru `solr-atlas-init`.
+
+**Volume `in use` saat `docker volume rm …_solr-data`**  
+Container **lhmeta-solr** (walau `stop`) masih mereferensikan volume. Hapus container Solr dulu, baru volume:
+
+```bash
+docker compose stop solr solr-atlas-init atlas
+docker compose rm -f solr solr-atlas-init atlas
+docker volume rm bigdata-metadata_solr-data   # nama pasti dari: docker volume ls | grep solr-data
+docker compose up -d solr
+# tunggu healthy, lalu:
+docker compose up -d solr-atlas-init atlas
+```
 
 ---
 
