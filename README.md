@@ -279,7 +279,7 @@ Port **di mesin host** memakai rentang 15xxx–22xxx agar tidak bentrok dengan M
 
 | Service | Image | Port host (default) | Akses UI / klien dari host |
 |---------|-------|---------------------|----------------------------|
-| Apache Spark Master | bitnami/spark:3.5.1 | **18080** (UI), **17077** (RPC) | http://localhost:18080 |
+| Apache Spark Master + Workers | `apache/spark:3.5.1-scala2.12-java17-python3-ubuntu` | **18080** (UI), **17077** (RPC) | http://localhost:18080 |
 | Apache Airflow | apache/airflow:2.9.1 | **18681** | http://localhost:18681 |
 | MinIO | minio/minio:latest | **19000** (S3 API), **19001** (console) | http://localhost:19001 |
 | Apache Solr | solr:8.11 | **18984** | http://localhost:18984/solr/ — core **vertex_index**, **edge_index**, **fulltext_index** (JanusGraph) dibuat oleh `solr-atlas-init` |
@@ -291,6 +291,15 @@ Port **di mesin host** memakai rentang 15xxx–22xxx agar tidak bentrok dengan M
 | ZooKeeper | confluentinc/cp-zookeeper:7.5.0 | (hanya internal Docker) | `zookeeper:2181` dari container lain |
 
 **Mengubah port:** salin `.env.example` menjadi `.env`, edit nilai `LHMETA_*`, lalu `docker compose up -d` lagi. Variabel yang didukung sama dengan komentar di bagian atas `docker-compose.yml`.
+
+**Melanjutkan stack setelah salah satu service gagal (mis. Spark pull):** dari folder yang sama dengan `docker-compose.yml`:
+
+```bash
+docker compose pull spark-master spark-worker-1 spark-worker-2
+docker compose up -d spark-master spark-worker-1 spark-worker-2
+```
+
+Lalu naikkan layanan lain (Atlas, Airflow, dll.) dengan perintah manual di **§8.2** di bawah, atau jalankan lagi `./start.sh` (umumnya aman untuk service yang sudah berjalan).
 
 ### 8.2 Menjalankan
 
