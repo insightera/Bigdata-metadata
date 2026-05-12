@@ -277,6 +277,9 @@ services:
       # sburn/apache-atlas memakai ATLAS_HOME=/apache-atlas (bukan /opt/apache-atlas)
       - atlas-data:/apache-atlas/data
       - ./atlas-conf/atlas-application.properties:/apache-atlas/conf/atlas-application.properties
+      # Classpath memuat /apache-atlas/hbase/conf — hbase-site bawaan memakai localhost ZK;
+      # mount ini wajib agar JanusGraph/HBase client menghubungi service `hbase` di compose.
+      - ./atlas-conf/hbase-site.xml:/apache-atlas/hbase/conf/hbase-site.xml:ro
     ports:
       - "${LHMETA_ATLAS_PORT:-22100}:21000"  # Atlas Web UI (host)
     healthcheck:

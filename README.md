@@ -485,6 +485,8 @@ Bila Anda sengaja menjalankan ulang `solr-atlas-init`, skrip di repo sudah menga
 **Atlas — log HBase `127.0.0.1:2181` / `Connection refused`**  
 `atlas.graph.storage.hbase.zookeeper.quorum` harus berisi **hostname saja** (mis. `hbase`), bukan `hbase:2181`; port pakai **`atlas.graph.storage.hbase.zookeeper.property.clientPort=2181`**. Format `host:2181` sering membuat klien memakai default `localhost:2181` di dalam container.
 
+Image **sburn/apache-atlas** juga memuat **`/apache-atlas/hbase/conf/hbase-site.xml`** di classpath; bawaannya mengarah ke localhost. Repositori ini memasang **`atlas-conf/hbase-site.xml`** ke path itu lewat `docker-compose.yml` — pastikan file tersebut ada setelah `git pull`.
+
 ---
 
 ## 9. Berkas pendukung di repositori
@@ -498,6 +500,7 @@ Bila Anda sengaja menjalankan ulang `solr-atlas-init`, skrip di repo sudah menga
 | `scripts/solr-atlas-init.sh` | Membuat core Solr `vertex_index`, `edge_index`, `fulltext_index` |
 | `.env.example` | Contoh override port; salin ke `.env` untuk menyesuaikan VM |
 | `atlas-conf/atlas-application.properties` | Konfigurasi Atlas |
+| `atlas-conf/hbase-site.xml` | Override ZK HBase untuk klien di container Atlas (service `hbase`) |
 | `scripts/dags/metadata_pipeline.py` | DAG orkestrasi metadata per layer |
 
 ---
