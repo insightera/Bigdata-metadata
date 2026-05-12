@@ -94,9 +94,8 @@ services:
     ports:
       - "${LHMETA_SOLR_PORT:-18984}:8983"
     healthcheck:
-      # Wajib GET ping — jangan pakai "nc || wget": bila nc sukses, wget tidak jalan
-      # dan service dianggap healthy padahal Solr belum siap (init gagal ping ke solr:8983).
-      test: ["CMD-SHELL", "wget -q -T 5 -O /dev/null 'http://127.0.0.1:8983/solr/admin/ping?wt=json'"]
+      # Tanpa core, /solr/admin/ping sering tidak dipakai — pakai info/system (valid saat 0 core).
+      test: ["CMD-SHELL", "wget -q -T 5 -O /dev/null 'http://127.0.0.1:8983/solr/admin/info/system?wt=json'"]
       interval: 5s
       timeout: 8s
       retries: 30

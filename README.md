@@ -459,7 +459,7 @@ docker compose up -d zookeeper kafka
 Skrip init memanggil API Solr `CREATE` core; **exit 8** biasanya respons error Solr (mis. konfigurasi core tidak valid). Cek: `docker compose logs solr-atlas-init`. Pastikan repositori berisi **`solr/atlas-config/index_synonyms.txt`** (direferensikan `schema.xml`); bila core setengah jadi, hapus volume dev Solr lalu ulangi init.
 
 **Solr — init exit 1, log: “Solr tidak merespon …”**  
-Biasanya healthcheck Solr sudah diperbaiki di `docker-compose.yml` (harus sukses **GET** `/solr/admin/ping`, bukan cuma port terbuka). `git pull` lalu `docker compose up -d solr` sampai healthy, baru `solr-atlas-init`.
+Biasanya healthcheck Solr memakai **GET** `/solr/admin/info/system` (bukan `/admin/ping` — tanpa core, ping sering gagal). `git pull` lalu `docker compose up -d solr` sampai healthy, baru `solr-atlas-init`.
 
 **Volume `in use` saat `docker volume rm …_solr-data`**  
 Container **lhmeta-solr** (walau `stop`) masih mereferensikan volume. Hapus container Solr dulu, baru volume:
