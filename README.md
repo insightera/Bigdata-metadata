@@ -473,6 +473,9 @@ docker compose up -d solr
 docker compose up -d solr-atlas-init atlas
 ```
 
+**Atlas — log `Server starting with TLS ? true` / `cert.stores.credential.provider.path`**  
+Atlas memilih **SecureEmbeddedServer** tanpa keystore/credential provider → crash sebelum HTTP. Di stack dev kita set **`atlas.enableTLS=false`** di `atlas-conf/atlas-application.properties`. Setelah `git pull`, restart: `docker compose up -d --force-recreate atlas`.
+
 ---
 
 ## 9. Berkas pendukung di repositori
