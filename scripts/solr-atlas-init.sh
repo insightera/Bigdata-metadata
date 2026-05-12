@@ -24,13 +24,24 @@ if [[ "${ready}" -ne 1 ]]; then
 fi
 
 list_cores_json() {
-  wget -qO- "${SOLR_URL}/solr/admin/cores?action=LIST&wt=json"
+  wget -q -T 15 -O- "${SOLR_URL}/solr/admin/cores?action=LIST&wt=json"
+}
+
+core_already_exists_response() {
+  local f="$1"
+  grep -qiE 'already exists|duplicate|is already defined|Core with name' "${f}" 2>/dev/null
 }
 
 for core in "${CORES[@]}"; do
-  json="$(list_cores_json || true)"
-  if echo "${json}" | grep -q "\"${core}\""; then
-    echo "Core '${core}' sudah ada, lewati."
+  json="$(list_cores_json 2>/dev/null || true)"
+  if echo "${json}" | grep -qF "\"${core}\""; then
+    echo "Core '${core}' sudah ada (LIST), lewati."
+    continue
+  fi
+
+  status_json="$(wget -q -T 15 -O- "${SOLR_URL}/solr/admin/cores?action=STATUS&core=${core}&wt=json" 2>/dev/null || true)"
+  if echo "${status_json}" | grep -qE "\"name\"[[:space:]]*:[[:space:]]*\"${core}\""; then
+    echo "Core '${core}' sudah ada (STATUS), lewati."
     continue
   fi
 
@@ -42,19 +53,27 @@ for core in "${CORES[@]}"; do
   chown -R 8983:8983 "${inst}" 2>/dev/null || true
 
   resp_file="/tmp/solr-create-${core}.txt"
-  if ! wget -q -O "${resp_file}" --post-data="action=CREATE&name=${core}&instanceDir=${inst}&wt=json" \
+  if ! wget -q -T 30 -O "${resp_file}" --post-data="action=CREATE&name=${core}&instanceDir=${inst}&wt=json" \
     "${SOLR_URL}/solr/admin/cores" 2>/dev/null; then
+    if core_already_exists_response "${resp_file}"; then
+      echo "Core '${core}' sudah ada (CREATE), lewati."
+      continue
+    fi
     echo "ERROR: CREATE core '${core}' gagal (HTTP atau wget). Respons:" >&2
     cat "${resp_file}" 2>/dev/null >&2 || true
     exit 1
   fi
-  if ! grep -q '"status":0' "${resp_file}"; then
-    echo "ERROR: CREATE core '${core}' ditolak Solr (status bukan 0):" >&2
-    cat "${resp_file}" >&2
-    exit 1
+  if grep -qE '"status"[[:space:]]*:[[:space:]]*0' "${resp_file}"; then
+    echo "Core '${core}' selesai."
+    continue
   fi
-
-  echo "Core '${core}' selesai."
+  if core_already_exists_response "${resp_file}"; then
+    echo "Core '${core}' sudah ada (respons Solr), lewati."
+    continue
+  fi
+  echo "ERROR: CREATE core '${core}' ditolak Solr:" >&2
+  cat "${resp_file}" >&2
+  exit 1
 done
 
 echo "Semua core Atlas/JanusGraph untuk Solr siap."
