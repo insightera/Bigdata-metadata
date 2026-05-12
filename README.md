@@ -273,20 +273,24 @@ Sumber data → Staging / Bronze → Silver → Gold
 
 ## 8. Stack teknologi, menjalankan layanan, dan troubleshooting
 
-### 8.1 Tabel layanan
+### 8.1 Tabel layanan dan port ke host (default)
 
-| Service | Image | Port | UI |
-|---------|-------|------|----|
-| Apache Spark | bitnami/spark:3.5.1 | 7077 | http://localhost:8080 |
-| Apache Airflow | apache/airflow:2.9.1 | — | http://localhost:8081 |
-| MinIO | minio/minio:latest | 9000 | http://localhost:9001 |
-| Apache Solr | solr:8.11 | 8984 (→8983) | http://localhost:8984/solr/ |
-| Apache HBase | harisekhon/hbase:2.1 | 16010 | http://localhost:16010 |
-| Apache Atlas | sburn/apache-atlas:2.3.0 | 21000 | http://localhost:21000 |
-| Hive Metastore | apache/hive:4.0.0 | 9083 | Thrift |
-| PostgreSQL | postgres:15-alpine | 5432 | — |
-| Kafka | confluentinc/cp-kafka:7.5.0 | 9092 | — |
-| ZooKeeper | confluentinc/cp-zookeeper:7.5.0 | 2181 | — |
+Port **di mesin host** memakai rentang 15xxx–22xxx agar tidak bentrok dengan MinIO/Postgres/Spark/Airflow umum (mis. 9000, 5432, 8080, 8081). Di dalam jaringan Docker, service tetap memakai port internal (mis. `minio:9000`, `atlas:21000`).
+
+| Service | Image | Port host (default) | Akses UI / klien dari host |
+|---------|-------|---------------------|----------------------------|
+| Apache Spark Master | bitnami/spark:3.5.1 | **18080** (UI), **17077** (RPC) | http://localhost:18080 |
+| Apache Airflow | apache/airflow:2.9.1 | **18681** | http://localhost:18681 |
+| MinIO | minio/minio:latest | **19000** (S3 API), **19001** (console) | http://localhost:19001 |
+| Apache Solr | solr:8.11 | **18984** | http://localhost:18984/solr/ — core **vertex_index**, **edge_index**, **fulltext_index** (JanusGraph) dibuat oleh `solr-atlas-init` |
+| Apache HBase | harisekhon/hbase:2.1 | **19010** | http://localhost:19010 |
+| Apache Atlas | sburn/apache-atlas:2.3.0 | **22100** | http://localhost:22100 |
+| Hive Metastore | apache/hive:4.0.0 | **19083** | `thrift://localhost:19083` |
+| PostgreSQL | postgres:15-alpine | **15432** | `localhost:15432` |
+| Kafka | confluentinc/cp-kafka:7.5.0 | (hanya internal Docker) | `kafka:9092` dari container lain |
+| ZooKeeper | confluentinc/cp-zookeeper:7.5.0 | (hanya internal Docker) | `zookeeper:2181` dari container lain |
+
+**Mengubah port:** salin `.env.example` menjadi `.env`, edit nilai `LHMETA_*`, lalu `docker compose up -d` lagi. Variabel yang didukung sama dengan komentar di bagian atas `docker-compose.yml`.
 
 ### 8.2 Menjalankan
 
@@ -376,7 +380,7 @@ spark.sql("SELECT * FROM lakehouse.bronze.raw_metadata").show()
 
 ```bash
 curl -u admin:admin \
-  -X POST http://localhost:21000/api/atlas/v2/entity \
+  -X POST http://localhost:22100/api/atlas/v2/entity \
   -H "Content-Type: application/json" \
   -d '{
     "entity": {
@@ -424,7 +428,10 @@ docker compose exec hive-metastore bash
 |--------|------------|
 | `Bigdata-pipeline-Metadata.jpg` | Diagram pipeline data + metadata (§1.1) |
 | `data-catalog-lifecycle.jpeg` | Siklus hidup aset katalog (§1.2) |
-| `docker-compose.yml` | Definisi layanan |
+| `docker-compose.yml` | Stack layanan; `solr-atlas-init` membuat core Solr Atlas |
+| `solr/atlas-config/` | `schema.xml` / `solrconfig.xml` Atlas 2.3 untuk core JanusGraph |
+| `scripts/solr-atlas-init.sh` | Membuat core Solr `vertex_index`, `edge_index`, `fulltext_index` |
+| `.env.example` | Contoh override port; salin ke `.env` untuk menyesuaikan VM |
 | `atlas-conf/atlas-application.properties` | Konfigurasi Atlas |
 | `scripts/dags/metadata_pipeline.py` | DAG orkestrasi metadata per layer |
 
