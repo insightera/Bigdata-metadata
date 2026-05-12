@@ -66,6 +66,8 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     volumes:
+      # Bila ZooKeeper di-reset tapi volume ini lama: InconsistentClusterIdException →
+      # hapus volume `kafka-data` (lihat README §8.9).
       - kafka-data:/var/lib/kafka/data
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]

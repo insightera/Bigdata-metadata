@@ -10,12 +10,18 @@ DATA_ROOT="${SOLR_DATA_ROOT:-/var/solr/data}"
 CORES=(vertex_index edge_index fulltext_index)
 
 echo "Menunggu Solr di ${SOLR_URL} ..."
+ready=0
 for _ in {1..90}; do
-  if wget -qO/dev/null "${SOLR_URL}/solr/admin/ping?wt=json" 2>/dev/null; then
+  if wget -q -O /dev/null "${SOLR_URL}/solr/admin/ping?wt=json" 2>/dev/null; then
+    ready=1
     break
   fi
   sleep 2
 done
+if [[ "${ready}" -ne 1 ]]; then
+  echo "ERROR: Solr tidak merespon setelah ~3 menit: ${SOLR_URL}" >&2
+  exit 1
+fi
 
 list_cores_json() {
   wget -qO- "${SOLR_URL}/solr/admin/cores?action=LIST&wt=json"
@@ -35,8 +41,18 @@ for core in "${CORES[@]}"; do
   cp -a "${ATLAS_TEMPLATE}/." "${inst}/conf/"
   chown -R 8983:8983 "${inst}" 2>/dev/null || true
 
-  wget -qO- --post-data="action=CREATE&name=${core}&instanceDir=${inst}" \
-    "${SOLR_URL}/solr/admin/cores" >/dev/null
+  resp_file="/tmp/solr-create-${core}.txt"
+  if ! wget -q -O "${resp_file}" --post-data="action=CREATE&name=${core}&instanceDir=${inst}&wt=json" \
+    "${SOLR_URL}/solr/admin/cores" 2>/dev/null; then
+    echo "ERROR: CREATE core '${core}' gagal (HTTP atau wget). Respons:" >&2
+    cat "${resp_file}" 2>/dev/null >&2 || true
+    exit 1
+  fi
+  if ! grep -q '"status":0' "${resp_file}"; then
+    echo "ERROR: CREATE core '${core}' ditolak Solr (status bukan 0):" >&2
+    cat "${resp_file}" >&2
+    exit 1
+  fi
 
   echo "Core '${core}' selesai."
 done

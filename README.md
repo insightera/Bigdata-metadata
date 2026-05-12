@@ -429,6 +429,35 @@ docker compose exec spark-master bash
 docker compose exec hive-metastore bash
 ```
 
+**Kafka — `InconsistentClusterIdException` (cluster ID tidak cocok dengan `meta.properties`)**  
+Terjadi jika volume **`kafka-data`** berisi broker lama sementara **ZooKeeper** sudah cluster baru (atau sebaliknya). Data topic Kafka untuk dev ini boleh dihapus.
+
+Container yang berhenti **masih mengunci volume**; hapus container Kafka dulu, baru `docker volume rm`:
+
+```bash
+docker volume ls | grep kafka-data
+docker compose stop kafka
+docker compose rm -f kafka
+docker volume rm NAMA_VOLUME_DARI_LS   # contoh: bigdata-metadata_kafka-data
+docker compose up -d kafka
+docker compose logs kafka --tail 20
+```
+
+Prefiks volume mengikuti **nama folder** proyek Compose (bukan harus `bigdata-metadata`). Jika `docker volume rm` menolak (“in use”), pastikan `docker compose rm -f kafka` sudah jalan dan tidak ada container lain yang memakai volume itu.
+
+Reset berpasangan ZooKeeper + Kafka bila perlu:
+
+```bash
+docker volume ls | grep -E 'kafka-data|zookeeper-data'
+docker compose stop kafka zookeeper
+docker compose rm -f kafka zookeeper
+docker volume rm NAMA_KAFKA_VOLUME NAMA_ZOOKEEPER_VOLUME
+docker compose up -d zookeeper kafka
+```
+
+**Solr — `solr-atlas-init` exit 8 (wget / HTTP error)**  
+Skrip init memanggil API Solr `CREATE` core; **exit 8** biasanya respons error Solr (mis. konfigurasi core tidak valid). Cek: `docker compose logs solr-atlas-init`. Pastikan repositori berisi **`solr/atlas-config/index_synonyms.txt`** (direferensikan `schema.xml`); bila core setengah jadi, hapus volume dev **`solr-data`** lalu ulangi `docker compose up -d solr-atlas-init`.
+
 ---
 
 ## 9. Berkas pendukung di repositori
