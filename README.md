@@ -281,7 +281,7 @@ Sumber data → Staging / Bronze → Silver → Gold
 | Apache Airflow | apache/airflow:2.9.1 | — | http://localhost:8081 |
 | MinIO | minio/minio:latest | 9000 | http://localhost:9001 |
 | Apache Solr | solr:8.11 | 8984 (→8983) | http://localhost:8984/solr/ |
-| Apache HBase | harisekhon/hbase:2.4 | 16010 | http://localhost:16010 |
+| Apache HBase | harisekhon/hbase:2.1 | 16010 | http://localhost:16010 |
 | Apache Atlas | sburn/apache-atlas:2.3.0 | 21000 | http://localhost:21000 |
 | Hive Metastore | apache/hive:4.0.0 | 9083 | Thrift |
 | PostgreSQL | postgres:15-alpine | 5432 | — |

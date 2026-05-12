@@ -85,9 +85,10 @@ services:
   # HBASE (penyimpanan graph JanusGraph untuk Atlas)
   # All-in-one: ZK + Master + RegionServer (image harisekhon/hbase)
   # Master UI: http://localhost:16010
+  # Tag 2.4 tidak ada di Docker Hub; gunakan 2.1 atau latest (lihat hub.docker.com/r/harisekhon/hbase/tags)
   # ─────────────────────────────────────────────
   hbase:
-    image: harisekhon/hbase:2.4
+    image: harisekhon/hbase:2.1
     container_name: hbase
     hostname: hbase
     networks: [lakehouse-net]
