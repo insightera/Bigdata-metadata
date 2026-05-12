@@ -86,7 +86,8 @@ services:
     hostname: solr
     networks: [lakehouse-net]
     environment:
-      SOLR_HEAP: 512m
+      # Atlas bootstrap menulis banyak dokumen ke 3 core; 512m sering memicu error indeks di Solr 8.
+      SOLR_HEAP: 1024m
       # Di banyak host Docker ulimit 1024 — matikan cek agresif Solr (dev/lab)
       SOLR_ULIMIT_CHECKS: "false"
     volumes:

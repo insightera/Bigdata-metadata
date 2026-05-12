@@ -113,10 +113,9 @@
   <schemaFactory class="ClassicIndexSchemaFactory"/>
   -->
 
-  <schemaFactory class="ManagedIndexSchemaFactory">
-         <bool name="mutable">true</bool>
-         <str name="managedSchemaResourceName">managed-schema</str>
-  </schemaFactory>
+  <!-- Classic: pakai schema.xml apa adanya. ManagedIndexSchemaFactory di Solr 8 + field dinamis
+       JanusGraph sering memicu "Server error writing document" saat bootstrap Atlas. -->
+  <schemaFactory class="ClassicIndexSchemaFactory"/>
 
   <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
        Index Config - These settings control low-level behavior of indexing
