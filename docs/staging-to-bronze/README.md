@@ -43,10 +43,10 @@ Dari root project, jalankan data generator:
 
 ```bash
 # Generate data awal (~78 ribu baris, ~9 MB)
-python scripts/generate_bronze_data.py --mode full --scale 1.0
+python3 scripts/generate_bronze_data.py --mode full --scale 1.0
 
 # Atau skala lebih besar untuk stress-test
-python scripts/generate_bronze_data.py --mode full --scale 5.0
+python3 scripts/generate_bronze_data.py --mode full --scale 5.0
 ```
 
 File CSV dihasilkan di `data/staging/`:
