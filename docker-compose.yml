@@ -2,7 +2,7 @@
 #   LHMETA_MINIO_API_PORT, LHMETA_MINIO_CONSOLE_PORT, LHMETA_POSTGRES_PORT,
 #   LHMETA_SOLR_PORT, LHMETA_HBASE_MASTER_PORT, LHMETA_HIVE_METASTORE_PORT,
 #   LHMETA_ATLAS_PORT, LHMETA_SPARK_MASTER_UI_PORT, LHMETA_SPARK_MASTER_PORT,
-#   LHMETA_AIRFLOW_WEB_PORT
+#   LHMETA_AIRFLOW_WEB_PORT, LHMETA_ICEBERG_REST_PORT, LHMETA_JUPYTER_PORT
 # Default di bawah memakai rentang 15xxx–22xxx agar tidak tabrakan dengan MinIO 9000/9001, 5432, 8080, 8081.
 
 networks:
@@ -218,6 +218,42 @@ services:
         mc mb --ignore-existing local/airflow-logs;
         echo '✅ MinIO buckets created: staging, bronze, silver, gold, warehouse, airflow-logs';
       "
+
+  # ─────────────────────────────────────────────
+  # ICEBERG REST CATALOG
+  # Menyediakan REST API standar untuk manajemen tabel Iceberg
+  # Endpoint: http://localhost:18181
+  # ─────────────────────────────────────────────
+  iceberg-rest:
+    image: tabulario/iceberg-rest:1.5.0
+    container_name: lhmeta-iceberg-rest
+    hostname: iceberg-rest
+    networks: [lakehouse-net]
+    depends_on:
+      minio:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      CATALOG_CATALOG__IMPL: org.apache.iceberg.jdbc.JdbcCatalog
+      CATALOG_URI: jdbc:postgresql://postgres:5432/iceberg_catalog
+      CATALOG_JDBC_USER: admin
+      CATALOG_JDBC_PASSWORD: admin123
+      CATALOG_WAREHOUSE: s3://warehouse/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://minio:9000
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin123
+      AWS_REGION: us-east-1
+    ports:
+      - "${LHMETA_ICEBERG_REST_PORT:-18181}:8181"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8181/v1/config"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   # ─────────────────────────────────────────────
   # HIVE METASTORE
@@ -437,3 +473,39 @@ services:
       AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
     volumes:
       - ./scripts/dags:/opt/airflow/dags
+
+  # ─────────────────────────────────────────────
+  # JUPYTER NOTEBOOK (PySpark + Iceberg)
+  # UI: host default http://localhost:18888  (token: lakehouse)
+  # Mount: DAGs di /home/jovyan/dags, notebooks di /home/jovyan/work
+  # ─────────────────────────────────────────────
+  jupyter:
+    image: jupyter/pyspark-notebook:latest
+    container_name: lhmeta-jupyter
+    hostname: jupyter
+    networks: [lakehouse-net]
+    depends_on:
+      spark-master:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      iceberg-rest:
+        condition: service_healthy
+    environment:
+      JUPYTER_ENABLE_LAB: "yes"
+      JUPYTER_TOKEN: "lakehouse"
+      SPARK_MASTER: spark://spark-master:7077
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin123
+      AWS_REGION: us-east-1
+      PYSPARK_SUBMIT_ARGS: >-
+        --packages
+        org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262
+        pyspark-shell
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./scripts/dags:/home/jovyan/dags
+      - ./conf/spark-defaults.conf:/usr/local/spark/conf/spark-defaults.conf:ro
+      - ./conf/core-site.xml:/usr/local/spark/conf/core-site.xml:ro
+    ports:
+      - "${LHMETA_JUPYTER_PORT:-18888}:8888"

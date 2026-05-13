@@ -483,12 +483,14 @@ docker compose up -d --force-recreate --no-deps atlas
 Bila Anda sengaja menjalankan ulang `solr-atlas-init`, skrip di repo sudah menganggap core yang sudah ada sebagai sukses (idempotent).
 
 **Atlas — log JanusGraph `Solr6Index` / `Server error writing document` (bootstrap gagal)**  
-Biasanya Solr kehabisan heap atau skema `managed-schema` tidak cocok dengan field dinamis Janus. Di repo: **`SOLR_HEAP=1024m`**, dan **`solrconfig.xml`** memakai **`ClassicIndexSchemaFactory`**. Setelah `git pull`, bersihkan data Solr dev dan buat ulang core, lalu naikkan Atlas:
+Biasanya Solr kehabisan heap atau skema `managed-schema` tidak cocok dengan field dinamis Janus. Di repo: **`SOLR_HEAP=1024m`**, dan **`solrconfig.xml`** memakai **`ClassicIndexSchemaFactory`**. Setelah `git pull`, bersihkan data Solr dev dan buat ulang core, lalu naikkan Atlas.
+
+**Penting:** `docker volume rm …_solr-data` gagal (“in use”) jika container **`lhmeta-solr`** masih ada — wajib **`docker compose rm -f solr`** (bukan hanya `stop`):
 
 ```bash
 docker compose stop atlas solr solr-atlas-init
-docker compose rm -f atlas solr-atlas-init
-docker volume rm "$(docker volume ls -qf name=_solr-data)"
+docker compose rm -f atlas solr solr-atlas-init
+docker volume rm bigdata-metadata_solr-data   # dari: docker volume ls | grep solr-data
 docker compose up -d solr
 docker compose up -d solr-atlas-init
 docker compose up -d atlas
