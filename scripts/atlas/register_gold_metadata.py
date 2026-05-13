@@ -131,6 +131,18 @@ def _atlas_request(method: str, path: str, data: dict | None = None) -> dict | N
         err = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
         if exc.code == 409:
             return None
+        if exc.code == 404 and method == "PUT":
+            logger.info("PUT returned 404, retrying with POST …")
+            req2 = urllib.request.Request(url, data=body, headers=headers, method="POST")
+            try:
+                with urllib.request.urlopen(req2, timeout=30) as resp2:
+                    return json.loads(resp2.read().decode("utf-8"))
+            except urllib.error.HTTPError as exc2:
+                if exc2.code == 409:
+                    return None
+                err2 = exc2.read().decode("utf-8", errors="replace") if exc2.fp else ""
+                logger.error("Atlas POST %s → %d: %s", path, exc2.code, err2[:400])
+                raise
         logger.error("Atlas %s %s → %d: %s", method, path, exc.code, err[:400])
         raise
     except urllib.error.URLError as exc:
