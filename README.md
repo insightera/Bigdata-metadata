@@ -505,7 +505,108 @@ Image **sburn/apache-atlas** juga memuat **`/apache-atlas/hbase/conf/hbase-site.
 
 ---
 
-## 9. Berkas pendukung di repositori
+## 9. Pipeline Implementasi — Full Medallion Architecture
+
+### 9.1 Pipeline 1: Staging → Bronze
+
+**Script:**
+- `scripts/spark/staging_to_bronze.py` — PySpark ETL: CSV → Iceberg tables
+- `scripts/atlas/register_bronze_metadata.py` — Atlas: technical metadata + profiling + classification
+- `scripts/dags/staging_bronze_pipeline.py` — Airflow DAG
+
+**Metadata yang dicatat ke Atlas (layer B):**
+1. **Raw Technical Metadata** — skema tabel, tipe kolom, lokasi S3, format file
+2. **Raw Lineage** — staging CSV → bronze Iceberg table
+3. **Raw Data Profiling** — row_count, null_count, distinct_count, completeness per kolom
+4. **Raw Classification** — `PII`, `Staging_Layer`, `Bronze_Layer`
+
+**Dokumentasi:** [`docs/staging-to-bronze/README.md`](docs/staging-to-bronze/README.md)
+
+---
+
+### 9.2 Pipeline 2: Bronze → Silver
+
+**Script:**
+- `scripts/spark/bronze_to_silver.py` — PySpark ETL: cleaning, enrichment, quality checks
+- `scripts/atlas/register_silver_metadata.py` — Atlas: quality + business + compliance metadata
+- `scripts/dags/bronze_silver_pipeline.py` — Airflow DAG
+
+**Metadata yang dicatat ke Atlas (layer S):**
+1. **Clean Metadata** — skema setelah transformasi, tipe enriched
+2. **Quality Metadata** — quality_score, status (PASS ≥80%, QUARANTINE 60-79%, REJECT <60%)
+3. **Transformation Lineage** — multi-source bronze → silver table
+4. **Business Metadata** — owner, IKU relevance, glossary terms, deskripsi bisnis
+5. **Compliance Metadata** — PII fields, data classification, retention policy, access restrictions
+
+**Dokumentasi:** [`docs/bronze-to-silver/README.md`](docs/bronze-to-silver/README.md)
+
+---
+
+### 9.3 Pipeline 3: Silver → Gold (Star Schema)
+
+**Script:**
+- `scripts/spark/silver_to_gold.py` — PySpark ETL: star schema (5 dimensi + 10 fakta IKU)
+- `scripts/atlas/register_gold_metadata.py` — Atlas: KPI + consumption + AI metadata
+- `scripts/dags/silver_gold_pipeline.py` — Airflow DAG
+
+**Star Schema:**
+- **5 Dimensi:** `dim_waktu`, `dim_prodi`, `dim_dosen`, `dim_mahasiswa`, `dim_topik_penelitian`
+- **10 Fakta IKU:** `fact_iku1_lulusan` s.d. `fact_iku8_akreditasi_internasional` + `fact_tata_kelola` + `fact_rekap_iku_institusi`
+
+**Metadata yang dicatat ke Atlas (layer G):**
+1. **Business Metadata** — KPI definitions, star schema relationships, ownership
+2. **KPI Metadata** — target Renstra per tahun, capaian aktual, status capaian, formula
+3. **AI Metadata** — ML readiness, feature store candidates, suggested models
+4. **Consumption Metadata** — consumers (Rektor, Wakil Rektor, LP3M, dll), dashboard panel, OLAP role
+5. **Advanced Lineage** — full chain staging → bronze → silver → gold (end-to-end)
+
+**Atlas Classifications Gold:**
+
+| Classification | Deskripsi |
+|---------------|-----------|
+| `Gold_Layer` | Semua tabel di Gold layer |
+| `Star_Schema_Dimension` | Tabel dimensi |
+| `Star_Schema_Fact` | Tabel fakta |
+| `KPI_Metric` | Tabel berisi metrik KPI/IKU |
+| `Executive_Dashboard` | Data untuk Dashboard Pimpinan |
+
+**Dokumentasi:** [`docs/silver-to-gold/README.md`](docs/silver-to-gold/README.md)
+
+---
+
+### 9.4 Ringkasan Full Data Catalog
+
+```
+Pipeline Lineage (end-to-end):
+  Source CSV → Staging → Bronze (Iceberg) → Silver (Enriched) → Gold (Star Schema)
+
+Atlas Entities:
+  Staging:  12 lakehouse_dataset (CSV)
+  Bronze:   12 lakehouse_dataset (Iceberg)
+  Silver:    6 lakehouse_dataset (Enriched)
+  Gold:     15 lakehouse_dataset (5 dim + 10 fact)
+  Total:   ~45 entities
+
+Lineage Processes:
+  staging → bronze:   12 lakehouse_etl_process
+  bronze → silver:     6 lakehouse_etl_process
+  silver → gold:     ~13 lakehouse_etl_process
+  Total:             ~31 processes
+
+Classifications (11 total):
+  PII, Staging_Layer, Bronze_Layer, Silver_Layer, Gold_Layer,
+  Quality_Pass, Quality_Quarantine, KPI_Metric,
+  Star_Schema_Dimension, Star_Schema_Fact, Executive_Dashboard
+
+Metadata per Layer:
+  Bronze: Technical, Lineage, Profiling, Classification
+  Silver: Clean, Quality, Transform Lineage, Business, Compliance
+  Gold:   Business, KPI, AI, Consumption, Advanced Lineage
+```
+
+---
+
+## 10. Berkas pendukung di repositori
 
 | Berkas | Keterangan |
 |--------|------------|
@@ -518,6 +619,19 @@ Image **sburn/apache-atlas** juga memuat **`/apache-atlas/hbase/conf/hbase-site.
 | `atlas-conf/atlas-application.properties` | Konfigurasi Atlas |
 | `atlas-conf/hbase-site.xml` | Override ZK HBase untuk klien di container Atlas (service `hbase`) |
 | `scripts/dags/metadata_pipeline.py` | DAG orkestrasi metadata per layer |
+| `scripts/generate_bronze_data.py` | Generator data sintetis ITERA (12 CSV) |
+| **Pipeline 1: Staging → Bronze** | |
+| `scripts/spark/staging_to_bronze.py` | PySpark ETL CSV → Iceberg |
+| `scripts/atlas/register_bronze_metadata.py` | Atlas metadata Bronze |
+| `scripts/dags/staging_bronze_pipeline.py` | Airflow DAG Pipeline 1 |
+| **Pipeline 2: Bronze → Silver** | |
+| `scripts/spark/bronze_to_silver.py` | PySpark ETL cleaning + enrichment |
+| `scripts/atlas/register_silver_metadata.py` | Atlas metadata Silver |
+| `scripts/dags/bronze_silver_pipeline.py` | Airflow DAG Pipeline 2 |
+| **Pipeline 3: Silver → Gold** | |
+| `scripts/spark/silver_to_gold.py` | PySpark ETL star schema (5 dim + 10 fact) |
+| `scripts/atlas/register_gold_metadata.py` | Atlas metadata Gold (KPI, AI, Consumption) |
+| `scripts/dags/silver_gold_pipeline.py` | Airflow DAG Pipeline 3 |
 
 ---
 
