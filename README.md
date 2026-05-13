@@ -76,14 +76,21 @@ Diagram berikut memetakan tahapan **Sandbox → Production** hingga dekomisionin
 
 **Kaitan dengan implementasi di repositori ini**
 
-| Tahapan siklus (gambar) | Padanan operasional di stack |
-|-------------------------|------------------------------|
-| Domain creation, asset selection | Namespace/bucket MinIO (`staging`, `bronze`, `silver`, `gold`), DAG Airflow `metadata_lakehouse_pipeline`, konteks domain di Atlas (qualifiedName, glossary). |
-| Asset created, raw (4) | Tabel/entity Bronze + metadata teknis pertama ke Atlas (REST/hook). |
-| Description, glossary, lineage, graph (5–8) via API (9) | Silver: enrichment lewat **Atlas REST API** (classification, business metadata, lineage). |
-| Asset published (10) | Gold: aset siap konsumsi; metadata KPI/governance terpasang. |
-| Discovered, requested, shared (11–13) | UI Atlas + Solr: pencarian dan detail aset. |
-| New lineage, update (14–16) | Pembaruan lineage otomatis/semi-otomatis saat transformasi terdaftar. |
+| Tahapan siklus (gambar) | Padanan operasional di stack | Implementasi Portal |
+|-------------------------|------------------------------|---------------------|
+| Domain creation, asset selection (1-2) | Namespace/bucket MinIO (`staging`, `bronze`, `silver`, `gold`), DAG Airflow, konteks domain di Atlas (qualifiedName, glossary). | `/layers` — Medallion layer browser |
+| Asset created, raw (3-4) | Tabel/entity Bronze + metadata teknis pertama ke Atlas (REST/hook). | `/catalog` — filter Bronze/Staging |
+| Description (5) | Deskripsi aset dicatat di Atlas entity attributes. | `/catalog/[qn]` — detail + **Edit Metadata** |
+| Glossary terms (6) | Atlas Glossary API: terms dihubungkan ke entity. | `/glossary` — **Atlas Glossary API + local** |
+| Lineage, graph (7-8) | Silver: enrichment lewat **Atlas REST API** (classification, business metadata, lineage). | `/lineage/[guid]` — graph visualization |
+| Via API (9) | Semua enrichment 5-8 via Atlas REST API. | `/api/atlas/*` — 8 proxy endpoints |
+| Asset published (10) | Gold: aset siap konsumsi; metadata KPI/governance terpasang. | `/kpi` — KPI Dashboard IKU |
+| Discovered (11) | Pencarian full-text + filter via Atlas Solr index. | `/catalog` — search + filter per layer |
+| Requested (12) | Workflow request akses dari consumer ke data steward. | `/catalog/[qn]` — **Request Access** modal |
+| Shared (13) | Sharing link/metadata aset ke stakeholder. | `/catalog/[qn]` — **Share + Export JSON** |
+| New data created (14) | Lineage tracks derived Gold tables dari Silver/Bronze. | `/lineage` — end-to-end overview |
+| New lineage (15) | Pembaruan lineage otomatis saat transformasi baru terdaftar. | `/lineage/[guid]` — upstream/downstream |
+| Update description (16) | Update deskripsi/owner via Atlas REST API PUT. | `/catalog/[qn]` — **Edit Metadata** → Atlas API |
 
 ---
 
@@ -633,20 +640,30 @@ docker compose up -d data-catalog
 # Akses: http://localhost:13000
 ```
 
-**Halaman:**
+**Halaman & Pemetaan Lifecycle (Figure 7-3):**
 
-| Route | Fungsi |
-|-------|--------|
-| `/` | Dashboard — statistik entity, layer, classification |
-| `/catalog` | Browse & search datasets dengan filter layer/type |
-| `/catalog/[qualifiedName]` | Detail dataset — metadata, schema, KPI, consumption |
-| `/lineage` | Overview lineage seluruh pipeline |
-| `/lineage/[guid]` | Lineage detail per entity (graph + relations) |
-| `/kpi` | KPI Dashboard — 8 IKU + star schema overview |
-| `/classifications` | Browse classification types |
-| `/glossary` | Business glossary terms |
-| `/quality` | Data quality overview (pass/quarantine/reject) |
-| `/layers` | Medallion architecture layer browser |
+| Route | Fungsi | Lifecycle Stage |
+|-------|--------|-----------------|
+| `/` | Dashboard — statistik entity, layer, classification | 11 (Discovered) |
+| `/catalog` | Browse & search datasets dengan filter layer/type | 11 (Discovered) |
+| `/catalog/[qualifiedName]` | Detail dataset + **lifecycle tracker, edit, request access, share, export** | 5, 11-13, 16 |
+| `/lineage` | Overview lineage seluruh pipeline | 7-8 (Lineage, Graph) |
+| `/lineage/[guid]` | Lineage detail per entity (graph + relations) | 7-8, 15 (New Lineage) |
+| `/kpi` | KPI Dashboard — 8 IKU + star schema overview | 10 (Published) |
+| `/classifications` | Browse classification types | 9 (via API) |
+| `/glossary` | Business glossary — **Atlas Glossary API + local terms** | 6 (Glossary Terms) |
+| `/quality` | Data quality overview (pass/quarantine/reject) | 9 (via API) |
+| `/layers` | Medallion architecture layer browser | 1-2 (Domain, Selection) |
+
+**Fitur lifecycle baru pada halaman detail dataset (`/catalog/[qualifiedName]`):**
+
+| Fitur | Stage Lifecycle | Deskripsi |
+|-------|-----------------|-----------|
+| Lifecycle Tracker | 1-16 | Visualisasi 16 tahapan lifecycle per aset (Sandbox → Enrichment → Production → Evolution) |
+| Edit Metadata | 16 (Update description) | Form edit deskripsi dan owner, push ke Atlas REST API |
+| Request Access | 12 (Asset requested) | Modal request akses dengan alasan, kirim ke data steward |
+| Share / Export | 13 (Asset shared) | Share via link/email, export metadata JSON |
+| Copy Link | 13 (Asset shared) | Salin URL aset ke clipboard |
 
 **API Routes (proxy ke Atlas):**
 
@@ -654,9 +671,12 @@ docker compose up -d data-catalog
 |----------|-----------|
 | `/api/atlas/search` | `POST /api/atlas/v2/search/basic` |
 | `/api/atlas/entity/[guid]` | `GET /api/atlas/v2/entity/guid/{guid}` |
+| `/api/atlas/entity/[guid]/update` | `PUT /api/atlas/v2/entity/guid/{guid}` |
 | `/api/atlas/lineage/[guid]` | `GET /api/atlas/v2/lineage/{guid}` |
 | `/api/atlas/classifications` | `GET /api/atlas/v2/types/typedefs?type=classification` |
 | `/api/atlas/metrics` | `GET /api/atlas/v2/admin/metrics` |
+| `/api/atlas/glossary` | `GET/POST /api/atlas/v2/glossary` |
+| `/api/atlas/glossary/[guid]/terms` | `GET /api/atlas/v2/glossary/{guid}/terms` |
 
 ---
 
@@ -720,13 +740,14 @@ Metadata per Layer:
 | `scripts/dags/silver_gold_pipeline.py` | Airflow DAG Pipeline 3 |
 | **Data Catalog Portal** | |
 | `data-catalog-main/helpers/atlasApi.ts` | Atlas REST API client (TypeScript) |
-| `data-catalog-main/pages/api/atlas/*.ts` | Next.js API routes (proxy ke Atlas) |
+| `data-catalog-main/pages/api/atlas/*.ts` | Next.js API routes — 8 proxy endpoints (search, entity, update, lineage, classifications, metrics, glossary, glossary terms) |
 | `data-catalog-main/pages/index.tsx` | Dashboard overview |
-| `data-catalog-main/pages/catalog/` | Browse & detail datasets |
-| `data-catalog-main/pages/lineage/` | Lineage visualization |
+| `data-catalog-main/pages/catalog/` | Browse & detail datasets + **lifecycle tracker, edit, request access, share, export** |
+| `data-catalog-main/pages/lineage/` | Lineage visualization (overview + per-entity graph) |
 | `data-catalog-main/pages/kpi/` | KPI Dashboard IKU |
 | `data-catalog-main/pages/classifications/` | Classification browser |
-| `data-catalog-main/pages/glossary/` | Business glossary |
+| `data-catalog-main/pages/glossary/` | Business glossary — **Atlas Glossary API + local fallback** |
 | `data-catalog-main/pages/quality/` | Data quality overview |
+| `data-catalog-main/pages/layers/` | Medallion architecture layer browser |
 
 ---

@@ -50,11 +50,36 @@ TOPIK = [
 ]
 
 
+def _resolve_jars() -> str:
+    import glob
+    import os
+
+    jars_dir = os.environ.get("SPARK_JARS_DIR", "/opt/spark-jars")
+    jars = glob.glob(os.path.join(jars_dir, "*.jar"))
+    if jars:
+        logger.info("Using pre-downloaded JARs from %s (%d files)", jars_dir, len(jars))
+        return ",".join(sorted(jars))
+    return ""
+
+
 def get_spark_session():
-    return (
+    import os
+    import socket
+
+    spark_master = os.environ.get("SPARK_MASTER", "spark://spark-master:7077")
+
+    try:
+        sock = socket.create_connection(("spark-master", 7077), timeout=5)
+        sock.close()
+        logger.info("Spark master reachable at %s", spark_master)
+    except (OSError, socket.timeout):
+        spark_master = "local[*]"
+        logger.warning("Spark master unreachable — falling back to %s", spark_master)
+
+    builder = (
         SparkSession.builder
         .appName("silver_to_gold")
-        .master("spark://spark-master:7077")
+        .master(spark_master)
         .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         .config("spark.sql.catalog.lakehouse", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.lakehouse.type", "hive")
@@ -67,14 +92,26 @@ def get_spark_session():
         .config("spark.hadoop.fs.s3a.path.style.access", "true")
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
-        .config("spark.jars.packages",
-                "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,"
-                "org.apache.hadoop:hadoop-aws:3.3.4,"
-                "com.amazonaws:aws-java-sdk-bundle:1.12.262")
+        .config(
+            "spark.hadoop.fs.s3a.aws.credentials.provider",
+            "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
+        )
         .config("spark.driver.memory", "1g")
         .config("spark.executor.memory", "1g")
-        .getOrCreate()
     )
+
+    local_jars = _resolve_jars()
+    if local_jars:
+        builder = builder.config("spark.jars", local_jars)
+    else:
+        builder = builder.config(
+            "spark.jars.packages",
+            "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,"
+            "org.apache.hadoop:hadoop-aws:3.3.4,"
+            "com.amazonaws:aws-java-sdk-bundle:1.12.262",
+        )
+
+    return builder.getOrCreate()
 
 
 # ───────────────────────────────────────────────────────────────────────────

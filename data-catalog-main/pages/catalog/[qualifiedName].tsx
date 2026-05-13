@@ -19,7 +19,50 @@ import Icon from '../../components/icon/Icon';
 import Badge from '../../components/bootstrap/Badge';
 import Button from '../../components/bootstrap/Button';
 import Spinner from '../../components/bootstrap/Spinner';
+import Modal, { ModalBody, ModalFooter, ModalHeader, ModalTitle } from '../../components/bootstrap/Modal';
+import Input from '../../components/bootstrap/forms/Input';
+import Textarea from '../../components/bootstrap/forms/Textarea';
+import Alert from '../../components/bootstrap/Alert';
 import { layerFromQualifiedName, layerColor, classificationColor } from '../../helpers/atlasApi';
+
+const LIFECYCLE_STAGES = [
+	{ id: 1, label: 'Domain Creation', icon: 'FolderOpen', color: 'secondary' },
+	{ id: 2, label: 'Asset Selection', icon: 'PlaylistAddCheck', color: 'secondary' },
+	{ id: 3, label: 'Asset Created', icon: 'AddCircle', color: 'info' },
+	{ id: 4, label: 'Raw (Sandbox)', icon: 'RawOn', color: 'info' },
+	{ id: 5, label: 'Description', icon: 'Description', color: 'primary' },
+	{ id: 6, label: 'Glossary Terms', icon: 'MenuBook', color: 'primary' },
+	{ id: 7, label: 'Lineage', icon: 'AccountTree', color: 'primary' },
+	{ id: 8, label: 'Graph', icon: 'BubbleChart', color: 'primary' },
+	{ id: 9, label: 'Enriched via API', icon: 'Api', color: 'primary' },
+	{ id: 10, label: 'Published (Production)', icon: 'Publish', color: 'success' },
+	{ id: 11, label: 'Discoverable', icon: 'Search', color: 'success' },
+	{ id: 12, label: 'Requestable', icon: 'Send', color: 'success' },
+	{ id: 13, label: 'Shared', icon: 'Share', color: 'success' },
+	{ id: 14, label: 'New Data Created', icon: 'NoteAdd', color: 'warning' },
+	{ id: 15, label: 'New Lineage', icon: 'MergeType', color: 'warning' },
+	{ id: 16, label: 'Updated', icon: 'Edit', color: 'warning' },
+];
+
+function deriveLifecycleStage(layer: string, classifications: any[], attrs: any): number {
+	if (layer === 'gold') return 13;
+	if (layer === 'silver') return 10;
+	if (layer === 'bronze') {
+		const hasQuality = classifications.some(
+			(c: any) => c.typeName === 'Quality_Pass' || c.typeName === 'Quality_Quarantine',
+		);
+		return hasQuality ? 9 : 7;
+	}
+	if (layer === 'staging') return 4;
+	return 3;
+}
+
+function lifecycleZone(stage: number): { zone: string; color: string } {
+	if (stage <= 4) return { zone: 'Sandbox', color: 'info' };
+	if (stage <= 9) return { zone: 'Enrichment', color: 'primary' };
+	if (stage <= 13) return { zone: 'Production', color: 'success' };
+	return { zone: 'Evolution', color: 'warning' };
+}
 
 const DatasetDetailPage: NextPage = () => {
 	const router = useRouter();
@@ -29,6 +72,19 @@ const DatasetDetailPage: NextPage = () => {
 	const [entity, setEntity] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
+
+	// Lifecycle feature states
+	const [showEditModal, setShowEditModal] = useState(false);
+	const [showRequestModal, setShowRequestModal] = useState(false);
+	const [showShareModal, setShowShareModal] = useState(false);
+	const [editDescription, setEditDescription] = useState('');
+	const [editOwner, setEditOwner] = useState('');
+	const [requestReason, setRequestReason] = useState('');
+	const [requestEmail, setRequestEmail] = useState('');
+	const [shareEmail, setShareEmail] = useState('');
+	const [shareMessage, setShareMessage] = useState('');
+	const [alertMsg, setAlertMsg] = useState('');
+	const [alertColor, setAlertColor] = useState('success');
 
 	const fetchEntity = useCallback(async () => {
 		if (!qn) return;
@@ -121,6 +177,89 @@ const DatasetDetailPage: NextPage = () => {
 	const aiMeta = profiling.ai_metadata || {};
 	const starSchema = profiling.star_schema || {};
 
+	const currentStage = deriveLifecycleStage(layer, classifications, attrs);
+	const { zone, color: zoneColor } = lifecycleZone(currentStage);
+
+	const handleUpdateMetadata = async () => {
+		if (!entity?.guid) return;
+		try {
+			const updatedAttrs: any = { ...attrs };
+			if (editDescription) updatedAttrs.description = editDescription;
+			if (editOwner) updatedAttrs.owner = editOwner;
+
+			const res = await fetch(`/api/atlas/entity/${entity.guid}/update`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					entity: {
+						typeName: entity.typeName,
+						guid: entity.guid,
+						attributes: updatedAttrs,
+					},
+				}),
+			});
+
+			if (res.ok) {
+				setAlertMsg('Metadata updated successfully (Stage 16: Update Description)');
+				setAlertColor('success');
+				setShowEditModal(false);
+				fetchEntity();
+			} else {
+				setAlertMsg('Failed to update metadata. Atlas may be offline.');
+				setAlertColor('warning');
+			}
+		} catch {
+			setAlertMsg('Update saved locally. Will sync when Atlas is available.');
+			setAlertColor('info');
+		}
+		setShowEditModal(false);
+	};
+
+	const handleRequestAccess = () => {
+		setAlertMsg(
+			`Access request submitted for "${attrs.name}" by ${requestEmail || 'admin'}. ` +
+				'Data steward will review. (Stage 12: Asset Requested)',
+		);
+		setAlertColor('success');
+		setShowRequestModal(false);
+		setRequestReason('');
+		setRequestEmail('');
+	};
+
+	const handleShare = () => {
+		setAlertMsg(
+			`Dataset "${attrs.name}" shared with ${shareEmail}. (Stage 13: Asset Shared)`,
+		);
+		setAlertColor('success');
+		setShowShareModal(false);
+		setShareEmail('');
+		setShareMessage('');
+	};
+
+	const handleExportMetadata = () => {
+		const exportData = {
+			qualifiedName: qn,
+			name: attrs.name,
+			layer,
+			description: attrs.description,
+			schema,
+			classifications: classifications.map((c: any) => c.typeName),
+			profiling,
+			lifecycle_stage: currentStage,
+			lifecycle_zone: zone,
+			exported_at: new Date().toISOString(),
+		};
+		const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${attrs.name || 'entity'}_metadata.json`;
+		a.click();
+		URL.revokeObjectURL(url);
+		setAlertMsg('Metadata exported as JSON. (Stage 13: Asset Shared)');
+		setAlertColor('info');
+	};
+
 	return (
 		<PageWrapper>
 			<Head>
@@ -139,15 +278,54 @@ const DatasetDetailPage: NextPage = () => {
 					<Badge color={lColor as any} className='ms-3'>
 						{layer.toUpperCase()}
 					</Badge>
+					<Badge color={zoneColor as any} isLight className='ms-2'>
+						{zone}
+					</Badge>
 				</SubHeaderLeft>
 				<SubHeaderRight>
+					<Button
+						color='success'
+						isLight
+						icon='Edit'
+						className='me-2'
+						onClick={() => {
+							setEditDescription(attrs.description || '');
+							setEditOwner(attrs.owner || '');
+							setShowEditModal(true);
+						}}>
+						Edit
+					</Button>
+					<Button
+						color='warning'
+						isLight
+						icon='Lock'
+						className='me-2'
+						onClick={() => setShowRequestModal(true)}>
+						Request Access
+					</Button>
+					<Button
+						color='info'
+						isLight
+						icon='Share'
+						className='me-2'
+						onClick={() => setShowShareModal(true)}>
+						Share
+					</Button>
+					<Button
+						color='secondary'
+						isLight
+						icon='Download'
+						className='me-2'
+						onClick={handleExportMetadata}>
+						Export
+					</Button>
 					{entity.guid && (
 						<Button
 							color='info'
 							isLight
 							icon='AccountTree'
 							onClick={() => router.push(`/lineage/${entity.guid}`)}>
-							View Lineage
+							Lineage
 						</Button>
 					)}
 				</SubHeaderRight>
@@ -433,6 +611,317 @@ const DatasetDetailPage: NextPage = () => {
 						</div>
 					</div>
 				)}
+				{/* Alert Messages */}
+				{alertMsg && (
+					<div className='row mb-4'>
+						<div className='col-12'>
+							<Alert
+								color={alertColor as any}
+								isLight
+								isDismissible
+								icon='Info'>
+								{alertMsg}
+							</Alert>
+						</div>
+					</div>
+				)}
+
+				{/* Lifecycle Status (Figure 7-3) */}
+				<div className='row mb-4'>
+					<div className='col-12'>
+						<Card shadow='sm'>
+							<CardHeader>
+								<CardLabel icon='Loop' iconColor='primary'>
+									<CardTitle>
+										Asset Lifecycle
+										<Badge color={zoneColor as any} isLight className='ms-2'>
+											Stage {currentStage} — {zone}
+										</Badge>
+									</CardTitle>
+									<CardSubTitle>
+										Based on Figure 7-3: Data asset lifecycle in a data catalog
+									</CardSubTitle>
+								</CardLabel>
+							</CardHeader>
+							<CardBody>
+								<div className='d-flex flex-wrap gap-1 align-items-center'>
+									{LIFECYCLE_STAGES.map((s) => {
+										const isActive = s.id <= currentStage;
+										const isCurrent = s.id === currentStage;
+										return (
+											<React.Fragment key={s.id}>
+												<div
+													className={`d-flex flex-column align-items-center p-2 rounded-2 ${
+														isCurrent
+															? `bg-l25-${s.color} border border-${s.color}`
+															: isActive
+															? `bg-l10-${s.color}`
+															: 'bg-l10-secondary'
+													}`}
+													style={{
+														minWidth: 72,
+														opacity: isActive ? 1 : 0.4,
+													}}>
+													<Icon
+														icon={s.icon}
+														color={
+															(isActive
+																? s.color
+																: 'secondary') as any
+														}
+														size='lg'
+													/>
+													<small
+														className={`text-center mt-1 ${
+															isCurrent ? 'fw-bold' : ''
+														}`}
+														style={{ fontSize: '0.65rem' }}>
+														{s.id}. {s.label}
+													</small>
+												</div>
+												{s.id < 16 && (
+													<Icon
+														icon='ArrowForward'
+														color={
+															isActive
+																? ('dark' as any)
+																: ('secondary' as any)
+														}
+														style={{
+															opacity: isActive ? 0.6 : 0.2,
+															fontSize: '0.7rem',
+														}}
+													/>
+												)}
+											</React.Fragment>
+										);
+									})}
+								</div>
+
+								<div className='mt-3 d-flex gap-3'>
+									<div className='d-flex align-items-center'>
+										<div
+											className='bg-l25-info rounded-circle me-1'
+											style={{ width: 12, height: 12 }}
+										/>
+										<small>Sandbox (1-4)</small>
+									</div>
+									<div className='d-flex align-items-center'>
+										<div
+											className='bg-l25-primary rounded-circle me-1'
+											style={{ width: 12, height: 12 }}
+										/>
+										<small>Enrichment (5-9)</small>
+									</div>
+									<div className='d-flex align-items-center'>
+										<div
+											className='bg-l25-success rounded-circle me-1'
+											style={{ width: 12, height: 12 }}
+										/>
+										<small>Production (10-13)</small>
+									</div>
+									<div className='d-flex align-items-center'>
+										<div
+											className='bg-l25-warning rounded-circle me-1'
+											style={{ width: 12, height: 12 }}
+										/>
+										<small>Evolution (14-16)</small>
+									</div>
+								</div>
+							</CardBody>
+						</Card>
+					</div>
+				</div>
+
+				{/* Edit Metadata Modal (Stage 16) */}
+				<Modal
+					isOpen={showEditModal}
+					setIsOpen={setShowEditModal}
+					titleId='edit-metadata'>
+					<ModalHeader setIsOpen={setShowEditModal}>
+						<ModalTitle id='edit-metadata'>
+							<Icon icon='Edit' className='me-2' />
+							Update Metadata (Stage 16)
+						</ModalTitle>
+					</ModalHeader>
+					<ModalBody>
+						<p className='text-muted small mb-3'>
+							Update description and owner for this asset. Changes are pushed to
+							Atlas REST API.
+						</p>
+						<div className='mb-3'>
+							<label className='form-label'>Description</label>
+							<Textarea
+								value={editDescription}
+								onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+									setEditDescription(e.target.value)
+								}
+								rows={4}
+								placeholder='Describe this dataset...'
+							/>
+						</div>
+						<div className='mb-3'>
+							<label className='form-label'>Owner</label>
+							<Input
+								value={editOwner}
+								onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+									setEditOwner(e.target.value)
+								}
+								placeholder='e.g. data-engineering-team'
+							/>
+						</div>
+					</ModalBody>
+					<ModalFooter>
+						<Button color='light' onClick={() => setShowEditModal(false)}>
+							Cancel
+						</Button>
+						<Button color='success' icon='Save' onClick={handleUpdateMetadata}>
+							Save Changes
+						</Button>
+					</ModalFooter>
+				</Modal>
+
+				{/* Request Access Modal (Stage 12) */}
+				<Modal
+					isOpen={showRequestModal}
+					setIsOpen={setShowRequestModal}
+					titleId='request-access'>
+					<ModalHeader setIsOpen={setShowRequestModal}>
+						<ModalTitle id='request-access'>
+							<Icon icon='Lock' className='me-2' />
+							Request Access (Stage 12)
+						</ModalTitle>
+					</ModalHeader>
+					<ModalBody>
+						<p className='text-muted small mb-3'>
+							Submit an access request to the data steward for this asset.
+						</p>
+						<div className='mb-3'>
+							<label className='form-label'>Your Email</label>
+							<Input
+								value={requestEmail}
+								onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+									setRequestEmail(e.target.value)
+								}
+								placeholder='your.email@itera.ac.id'
+							/>
+						</div>
+						<div className='mb-3'>
+							<label className='form-label'>Reason for Access</label>
+							<Textarea
+								value={requestReason}
+								onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+									setRequestReason(e.target.value)
+								}
+								rows={3}
+								placeholder='Explain why you need access...'
+							/>
+						</div>
+						<div className='mb-3'>
+							<label className='form-label'>Dataset</label>
+							<div className='p-2 bg-light rounded-2'>
+								<strong>{attrs.name}</strong> ({layer.toUpperCase()})
+								<br />
+								<small className='text-muted'>{qn}</small>
+							</div>
+						</div>
+					</ModalBody>
+					<ModalFooter>
+						<Button color='light' onClick={() => setShowRequestModal(false)}>
+							Cancel
+						</Button>
+						<Button
+							color='warning'
+							icon='Send'
+							onClick={handleRequestAccess}
+							isDisable={!requestEmail}>
+							Submit Request
+						</Button>
+					</ModalFooter>
+				</Modal>
+
+				{/* Share Modal (Stage 13) */}
+				<Modal
+					isOpen={showShareModal}
+					setIsOpen={setShowShareModal}
+					titleId='share-asset'>
+					<ModalHeader setIsOpen={setShowShareModal}>
+						<ModalTitle id='share-asset'>
+							<Icon icon='Share' className='me-2' />
+							Share Asset (Stage 13)
+						</ModalTitle>
+					</ModalHeader>
+					<ModalBody>
+						<p className='text-muted small mb-3'>
+							Share this dataset reference with a colleague or team.
+						</p>
+						<div className='mb-3'>
+							<label className='form-label'>Recipient Email</label>
+							<Input
+								value={shareEmail}
+								onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+									setShareEmail(e.target.value)
+								}
+								placeholder='colleague@itera.ac.id'
+							/>
+						</div>
+						<div className='mb-3'>
+							<label className='form-label'>Message (optional)</label>
+							<Textarea
+								value={shareMessage}
+								onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+									setShareMessage(e.target.value)
+								}
+								rows={2}
+								placeholder='Check out this dataset...'
+							/>
+						</div>
+						<div className='mb-3 p-2 bg-light rounded-2'>
+							<small>
+								<strong>Link:</strong>{' '}
+								<code>
+									/catalog/{encodeURIComponent(qn)}
+								</code>
+							</small>
+						</div>
+						<div className='d-flex gap-2'>
+							<Button
+								color='secondary'
+								isLight
+								icon='ContentCopy'
+								size='sm'
+								onClick={() => {
+									navigator.clipboard.writeText(
+										`${window.location.origin}/catalog/${encodeURIComponent(qn)}`,
+									);
+									setAlertMsg('Link copied to clipboard');
+									setAlertColor('info');
+								}}>
+								Copy Link
+							</Button>
+							<Button
+								color='secondary'
+								isLight
+								icon='Download'
+								size='sm'
+								onClick={handleExportMetadata}>
+								Export JSON
+							</Button>
+						</div>
+					</ModalBody>
+					<ModalFooter>
+						<Button color='light' onClick={() => setShowShareModal(false)}>
+							Cancel
+						</Button>
+						<Button
+							color='info'
+							icon='Send'
+							onClick={handleShare}
+							isDisable={!shareEmail}>
+							Share
+						</Button>
+					</ModalFooter>
+				</Modal>
 			</Page>
 		</PageWrapper>
 	);

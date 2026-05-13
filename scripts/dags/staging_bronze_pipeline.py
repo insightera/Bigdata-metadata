@@ -20,6 +20,7 @@ Metadata yang dicatat di Bronze:
   4. Raw Classification      (PII, layer tagging)
 """
 
+import csv
 import json
 import logging
 import os
@@ -41,12 +42,61 @@ MINIO_SECRET_KEY = "minioadmin123"
 
 STAGING_CSV_DIR = "/opt/airflow/data/staging"
 
+PII_COLUMNS = {
+    "raw_mahasiswa": ["nama", "mahasiswa_id", "asal_provinsi"],
+    "raw_lulusan": ["mahasiswa_id", "nama_perusahaan"],
+    "raw_dosen": ["nama", "dosen_id"],
+    "raw_kegiatan_dosen": ["dosen_id"],
+    "raw_penelitian": ["dosen_id"],
+    "raw_pengabdian": ["dosen_id"],
+    "raw_kerjasama": [],
+    "raw_mbkm": ["mahasiswa_id"],
+    "raw_akreditasi": [],
+    "raw_prodi": [],
+    "raw_keuangan": [],
+    "raw_prestasi_mahasiswa": ["mahasiswa_id"],
+}
+
 default_args = {
     "owner": "data-engineering",
-    "retries": 1,
-    "retry_delay": timedelta(minutes=3),
+    "retries": 2,
+    "retry_delay": timedelta(minutes=2),
     "email_on_failure": False,
 }
+
+
+def _profile_csv(filepath: str, table_name: str) -> dict:
+    """Profile a CSV file using stdlib csv (no Spark needed)."""
+    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+        reader = csv.DictReader(f)
+        columns_list = reader.fieldnames or []
+        rows = list(reader)
+
+    row_count = len(rows)
+    if row_count == 0:
+        return {"table_name": table_name, "row_count": 0, "columns": {}, "column_count": 0}
+
+    col_stats = {}
+    for col in columns_list:
+        nulls = sum(1 for r in rows if not r.get(col) or r[col].strip() == "")
+        distincts = len({r.get(col, "") for r in rows})
+        col_stats[col] = {
+            "data_type": "StringType()",
+            "null_count": nulls,
+            "null_pct": round(nulls / row_count * 100, 2),
+            "distinct_count": distincts,
+            "completeness_pct": round((row_count - nulls) / row_count * 100, 2),
+        }
+
+    return {
+        "table_name": table_name,
+        "row_count": row_count,
+        "column_count": len(columns_list),
+        "columns": col_stats,
+        "schema": {c: "StringType()" for c in columns_list},
+        "pii_columns": PII_COLUMNS.get(table_name, []),
+        "profiled_at": datetime.now().astimezone().isoformat(),
+    }
 
 
 # ─── Task 1: Upload CSV ke MinIO staging bucket ────────────────────────────
@@ -105,8 +155,32 @@ def register_atlas_metadata(**context):
     from atlas.register_bronze_metadata import register_all_metadata
 
     profiling = context["ti"].xcom_pull(task_ids="staging_to_bronze", key="profiling")
+
     if not profiling:
-        raise ValueError("No profiling data received from staging_to_bronze task")
+        logging.warning(
+            "No profiling from Spark ETL — building CSV-based profiling as fallback"
+        )
+        profiling = {}
+        csv_dir = STAGING_CSV_DIR
+        for fname in sorted(os.listdir(csv_dir)):
+            if not fname.endswith(".csv"):
+                continue
+            table_name = fname.replace(".csv", "")
+            filepath = os.path.join(csv_dir, fname)
+            try:
+                prof = _profile_csv(filepath, table_name)
+                profiling[table_name] = prof
+                logging.info("CSV profiled: %s (%d rows)", table_name, prof["row_count"])
+            except Exception as exc:
+                logging.warning("Failed to profile %s: %s", table_name, exc)
+
+    if not profiling:
+        raise ValueError(
+            "No profiling data — neither from Spark ETL nor CSV fallback. "
+            "Check that CSV files exist in " + STAGING_CSV_DIR
+        )
+
+    logging.info("Registering %d tables to Atlas at %s", len(profiling), ATLAS_URL)
 
     success = register_all_metadata(
         profiling_results=profiling,
@@ -145,6 +219,7 @@ with DAG(
     atlas_register = PythonOperator(
         task_id="register_atlas_metadata",
         python_callable=register_atlas_metadata,
+        trigger_rule="all_done",
     )
 
     verify_atlas = BashOperator(
