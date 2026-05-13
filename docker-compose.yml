@@ -17,6 +17,7 @@ volumes:
   zookeeper-data:
   kafka-data:
   solr-data:
+  catalog-node-modules:
 
 services:
 
@@ -518,3 +519,22 @@ services:
       - ./conf/core-site.xml:/usr/local/spark/conf/core-site.xml:ro
     ports:
       - "${LHMETA_JUPYTER_PORT:-18888}:8888"
+
+  # ── Data Catalog Portal (Next.js) ──
+  data-catalog:
+    container_name: lhmeta-data-catalog
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "yarn install && yarn dev"
+    environment:
+      - NEXT_PUBLIC_ATLAS_URL=http://atlas:21000
+      - ATLAS_USER=admin
+      - ATLAS_PASS=admin
+    volumes:
+      - ./data-catalog-main:/app
+      - catalog-node-modules:/app/node_modules
+    ports:
+      - "${LHMETA_CATALOG_PORT:-13000}:3000"
+    networks:
+      - lakehouse-net
+    restart: unless-stopped

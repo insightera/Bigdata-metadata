@@ -280,6 +280,7 @@ Port **di mesin host** memakai rentang 15xxx–22xxx agar tidak bentrok dengan M
 | Service | Image | Port host (default) | Akses UI / klien dari host |
 |---------|-------|---------------------|----------------------------|
 | Apache Spark Master + Workers | `apache/spark:3.5.1-scala2.12-java17-python3-ubuntu` | **18080** (UI), **17077** (RPC) | http://localhost:18080 |
+| **Data Catalog Portal** | **node:20-alpine (Next.js)** | **13000** | **http://localhost:13000** |
 | Apache Airflow | apache/airflow:2.9.1 | **18681** | http://localhost:18681 |
 | MinIO | minio/minio:latest | **19000** (S3 API), **19001** (console) | http://localhost:19001 |
 | Apache Solr | solr:8.11.2 | **18984** | http://localhost:18984/solr/ — core **vertex_index**, **edge_index**, **fulltext_index** (JanusGraph) dibuat oleh `solr-atlas-init` |
@@ -574,7 +575,44 @@ Image **sburn/apache-atlas** juga memuat **`/apache-atlas/hbase/conf/hbase-site.
 
 ---
 
-### 9.4 Ringkasan Full Data Catalog
+### 9.4 Data Catalog Portal (Next.js Frontend)
+
+**Folder:** `data-catalog-main/` — Next.js + Bootstrap (Facit template) frontend yang terhubung ke Atlas REST API.
+
+**Menjalankan:**
+```bash
+docker compose up -d data-catalog
+# Akses: http://localhost:13000
+```
+
+**Halaman:**
+
+| Route | Fungsi |
+|-------|--------|
+| `/` | Dashboard — statistik entity, layer, classification |
+| `/catalog` | Browse & search datasets dengan filter layer/type |
+| `/catalog/[qualifiedName]` | Detail dataset — metadata, schema, KPI, consumption |
+| `/lineage` | Overview lineage seluruh pipeline |
+| `/lineage/[guid]` | Lineage detail per entity (graph + relations) |
+| `/kpi` | KPI Dashboard — 8 IKU + star schema overview |
+| `/classifications` | Browse classification types |
+| `/glossary` | Business glossary terms |
+| `/quality` | Data quality overview (pass/quarantine/reject) |
+| `/layers` | Medallion architecture layer browser |
+
+**API Routes (proxy ke Atlas):**
+
+| Endpoint | Atlas API |
+|----------|-----------|
+| `/api/atlas/search` | `POST /api/atlas/v2/search/basic` |
+| `/api/atlas/entity/[guid]` | `GET /api/atlas/v2/entity/guid/{guid}` |
+| `/api/atlas/lineage/[guid]` | `GET /api/atlas/v2/lineage/{guid}` |
+| `/api/atlas/classifications` | `GET /api/atlas/v2/types/typedefs?type=classification` |
+| `/api/atlas/metrics` | `GET /api/atlas/v2/admin/metrics` |
+
+---
+
+### 9.5 Ringkasan Full Data Catalog
 
 ```
 Pipeline Lineage (end-to-end):
@@ -632,6 +670,16 @@ Metadata per Layer:
 | `scripts/spark/silver_to_gold.py` | PySpark ETL star schema (5 dim + 10 fact) |
 | `scripts/atlas/register_gold_metadata.py` | Atlas metadata Gold (KPI, AI, Consumption) |
 | `scripts/dags/silver_gold_pipeline.py` | Airflow DAG Pipeline 3 |
+| **Data Catalog Portal** | |
+| `data-catalog-main/helpers/atlasApi.ts` | Atlas REST API client (TypeScript) |
+| `data-catalog-main/pages/api/atlas/*.ts` | Next.js API routes (proxy ke Atlas) |
+| `data-catalog-main/pages/index.tsx` | Dashboard overview |
+| `data-catalog-main/pages/catalog/` | Browse & detail datasets |
+| `data-catalog-main/pages/lineage/` | Lineage visualization |
+| `data-catalog-main/pages/kpi/` | KPI Dashboard IKU |
+| `data-catalog-main/pages/classifications/` | Classification browser |
+| `data-catalog-main/pages/glossary/` | Business glossary |
+| `data-catalog-main/pages/quality/` | Data quality overview |
 
 ---
 

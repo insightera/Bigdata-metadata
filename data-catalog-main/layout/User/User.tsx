@@ -39,20 +39,12 @@ const User = () => {
 						<img src={userData?.src} alt='Avatar' width={128} height={128} />
 					)}
 				</div>
-				<div className='user-info'>
-					<div className='user-name'>
-						<Popovers title='User.tsx' desc={<code>layout/User/User.tsx</code>}>
-							{`${userData?.name} ${userData?.surname}`}
-						</Popovers>
-						<code className='ps-2'>User.tsx</code>
-					</div>
-					<div className='user-sub-title'>
-						<Popovers title='User.tsx' desc={<code>layout/User/User.tsx</code>}>
-							User
-						</Popovers>
-						<code className='ps-2'>User.tsx</code>
-					</div>
+			<div className='user-info'>
+				<div className='user-name'>
+					{`${userData?.name} ${userData?.surname}`}
 				</div>
+				<div className='user-sub-title'>Data Catalog Admin</div>
+			</div>
 			</div>
 
 			<Collapse isOpen={collapseStatus} className='user-menu'>

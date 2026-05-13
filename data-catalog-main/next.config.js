@@ -29,9 +29,12 @@ const nextConfig = withInterceptStdout(
 			silenceDeprecations: ['import', 'global-builtin'],
 			logger: sass.Logger.silent,
 		},
-		webpack(config, options) {
-			return config;
-		},
+	env: {
+		NEXT_PUBLIC_ATLAS_URL: process.env.NEXT_PUBLIC_ATLAS_URL || 'http://localhost:21000',
+	},
+	webpack(config, options) {
+		return config;
+	},
 	}),
 	(log) => (hideWarn.some((warn) => log.includes(warn)) ? '' : log),
 );

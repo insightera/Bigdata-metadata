@@ -1,4 +1,9 @@
-export const dashboardPagesMenu = {
+export const catalogMenu = {
+	catalogOverview: {
+		id: 'catalogOverview',
+		text: 'Catalog',
+		icon: 'Category',
+	},
 	dashboard: {
 		id: 'dashboard',
 		text: 'Dashboard',
@@ -6,31 +11,89 @@ export const dashboardPagesMenu = {
 		icon: 'Dashboard',
 		subMenu: null,
 	},
+	browse: {
+		id: 'browse',
+		text: 'Browse Datasets',
+		path: 'catalog',
+		icon: 'Storage',
+		subMenu: null,
+	},
+	lineage: {
+		id: 'lineage',
+		text: 'Data Lineage',
+		path: 'lineage',
+		icon: 'AccountTree',
+		subMenu: null,
+	},
+	kpiDashboard: {
+		id: 'kpiDashboard',
+		text: 'KPI Dashboard',
+		path: 'kpi',
+		icon: 'BarChart',
+		subMenu: null,
+	},
 };
 
-export const demoPagesMenu = {
-	auth: {
-		id: 'auth',
-		text: 'Auth Pages',
-		icon: 'Extension',
+export const governanceMenu = {
+	governanceOverview: {
+		id: 'governanceOverview',
+		text: 'Governance',
+		icon: 'Security',
 	},
-	login: {
-		id: 'login',
-		text: 'Login',
-		path: 'auth-pages/login',
-		icon: 'Login',
+	classifications: {
+		id: 'classifications',
+		text: 'Classifications',
+		path: 'classifications',
+		icon: 'Label',
+		subMenu: null,
 	},
-	signUp: {
-		id: 'signUp',
-		text: 'Sign Up',
-		path: 'auth-pages/sign-up',
-		icon: 'PersonAdd',
+	glossary: {
+		id: 'glossary',
+		text: 'Glossary',
+		path: 'glossary',
+		icon: 'MenuBook',
+		subMenu: null,
 	},
-	page404: {
-		id: 'Page404',
-		text: '404 Page',
-		path: '404',
-		icon: 'ReportGmailerrorred',
+	quality: {
+		id: 'quality',
+		text: 'Data Quality',
+		path: 'quality',
+		icon: 'VerifiedUser',
+		subMenu: null,
+	},
+};
+
+export const pipelineMenu = {
+	pipelineOverview: {
+		id: 'pipelineOverview',
+		text: 'Pipeline',
+		icon: 'Settings',
+	},
+	layers: {
+		id: 'layers',
+		text: 'Medallion Layers',
+		path: 'layers',
+		icon: 'Layers',
+		subMenu: {
+			bronze: {
+				id: 'bronze',
+				text: 'Bronze (Raw)',
+				path: 'layers/bronze',
+				icon: 'RawOn',
+			},
+			silver: {
+				id: 'silver',
+				text: 'Silver (Enriched)',
+				path: 'layers/silver',
+				icon: 'AutoFixHigh',
+			},
+			gold: {
+				id: 'gold',
+				text: 'Gold (Star Schema)',
+				path: 'layers/gold',
+				icon: 'Star',
+			},
+		},
 	},
 };
 
@@ -77,24 +140,30 @@ export const pageLayoutTypesPagesMenu = {
 			},
 		},
 	},
-	asideTypes: {
-		id: 'asideTypes',
-		text: 'Aside Types',
-		path: 'aside-types',
-		icon: 'Vertical Split',
-		subMenu: {
-			defaultAside: {
-				id: 'defaultAside',
-				text: 'Default Aside',
-				path: 'aside-types/default-aside',
-				icon: 'ViewQuilt',
-			},
-			minimizeAside: {
-				id: 'minimizeAside',
-				text: 'Minimize Aside',
-				path: 'aside-types/minimize-aside',
-				icon: 'View Compact',
-			},
-		},
+};
+
+export const demoPagesMenu = {
+	auth: {
+		id: 'auth',
+		text: 'Auth Pages',
+		icon: 'Extension',
+	},
+	login: {
+		id: 'login',
+		text: 'Login',
+		path: 'auth-pages/login',
+		icon: 'Login',
+	},
+	signUp: {
+		id: 'signUp',
+		text: 'Sign Up',
+		path: 'auth-pages/sign-up',
+		icon: 'PersonAdd',
+	},
+	page404: {
+		id: 'Page404',
+		text: '404 Page',
+		path: '404',
+		icon: 'ReportGmailerrorred',
 	},
 };
