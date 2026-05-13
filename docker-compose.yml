@@ -249,7 +249,7 @@ services:
     ports:
       - "${LHMETA_ICEBERG_REST_PORT:-18181}:8181"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8181/v1/config"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8181'"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -490,7 +490,7 @@ services:
       minio:
         condition: service_healthy
       iceberg-rest:
-        condition: service_healthy
+        condition: service_started
     environment:
       JUPYTER_ENABLE_LAB: "yes"
       JUPYTER_TOKEN: "lakehouse"
