@@ -490,7 +490,7 @@ def main():
     if args.output_dir:
         out = Path(args.output_dir)
     else:
-        out = Path(__file__).resolve().parent.parent / "data" / "bronze"
+        out = Path(__file__).resolve().parent.parent / "data" / "staging"
     out.mkdir(parents=True, exist_ok=True)
 
     append = args.mode == "append"

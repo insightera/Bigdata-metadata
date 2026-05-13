@@ -408,7 +408,7 @@ services:
   # UI: host default http://localhost:18681  (airflow / airflow)
   # ─────────────────────────────────────────────
   airflow-init:
-    image: apache/airflow:2.9.1
+    build: ./airflow
     container_name: lhmeta-airflow-init
     networks: [lakehouse-net]
     depends_on:
@@ -419,8 +419,11 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin123@postgres:5432/airflow_db
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
+      PYTHONPATH: "/opt/airflow/scripts"
     volumes:
       - ./scripts/dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts:ro
+      - ./data/staging:/opt/airflow/data/staging:ro
     entrypoint: >
       /bin/bash -c "
         airflow db init &&
@@ -429,7 +432,7 @@ services:
       "
 
   airflow-webserver:
-    image: apache/airflow:2.9.1
+    build: ./airflow
     container_name: lhmeta-airflow-webserver
     hostname: airflow-webserver
     networks: [lakehouse-net]
@@ -446,8 +449,11 @@ services:
       AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
       AIRFLOW__WEBSERVER__SECRET_KEY: "lakehouse_secret_key_2024"
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      PYTHONPATH: "/opt/airflow/scripts"
     volumes:
       - ./scripts/dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts:ro
+      - ./data/staging:/opt/airflow/data/staging:ro
     ports:
       - "${LHMETA_AIRFLOW_WEB_PORT:-18681}:8080"   # Airflow Web UI (host)
     healthcheck:
@@ -458,7 +464,7 @@ services:
       start_period: 60s
 
   airflow-scheduler:
-    image: apache/airflow:2.9.1
+    build: ./airflow
     container_name: lhmeta-airflow-scheduler
     hostname: airflow-scheduler
     networks: [lakehouse-net]
@@ -471,8 +477,11 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin123@postgres:5432/airflow_db
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
+      PYTHONPATH: "/opt/airflow/scripts"
     volumes:
       - ./scripts/dags:/opt/airflow/dags
+      - ./scripts:/opt/airflow/scripts:ro
+      - ./data/staging:/opt/airflow/data/staging:ro
 
   # ─────────────────────────────────────────────
   # JUPYTER NOTEBOOK (PySpark + Iceberg)
