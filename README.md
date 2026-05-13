@@ -2,9 +2,57 @@
 
 Repositori ini mendukung penelitian big data pada **metadata-driven governance** di arsitektur lakehouse **Medallion (Bronze → Silver → Gold)**, dengan **Apache Atlas** sebagai tulang punggung katalog dan lineage. Dokumen ini merangkum **metodologi**, **teknologi**, **pengamatan/metrik evaluasi**, serta **kerangka Hasil dan Pembahasan**.
 
+## Tech Stack
+
+### Infrastructure & Orchestration
+
+![Docker](https://img.shields.io/badge/Docker-24.x-2496ED?logo=docker&logoColor=white)
+![Docker Compose](https://img.shields.io/badge/Docker_Compose-v2-2496ED?logo=docker&logoColor=white)
+![Apache Airflow](https://img.shields.io/badge/Apache_Airflow-2.9.1-017CEE?logo=apacheairflow&logoColor=white)
+
+### Data Processing & Storage
+
+![Apache Spark](https://img.shields.io/badge/Apache_Spark-3.5.1-E25A1C?logo=apachespark&logoColor=white)
+![PySpark](https://img.shields.io/badge/PySpark-3.5.1-E25A1C?logo=apachespark&logoColor=white)
+![Apache Iceberg](https://img.shields.io/badge/Apache_Iceberg-1.5.2-4E9BCD?logo=data:image/svg+xml;base64,&logoColor=white)
+![MinIO](https://img.shields.io/badge/MinIO-latest-C72E49?logo=minio&logoColor=white)
+![Apache Hive](https://img.shields.io/badge/Apache_Hive-4.0.0-FDEE21?logo=apachehive&logoColor=black)
+
+### Metadata & Governance
+
+![Apache Atlas](https://img.shields.io/badge/Apache_Atlas-2.3.0-4A154B?logo=apache&logoColor=white)
+![Apache HBase](https://img.shields.io/badge/Apache_HBase-2.1-D22128?logo=apache&logoColor=white)
+![Apache Solr](https://img.shields.io/badge/Apache_Solr-8.11.2-D9411E?logo=apachesolr&logoColor=white)
+
+### Messaging & Coordination
+
+![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-7.5.0_(CP)-231F20?logo=apachekafka&logoColor=white)
+![Apache ZooKeeper](https://img.shields.io/badge/ZooKeeper-7.5.0_(CP)-6DB33F?logo=apache&logoColor=white)
+
+### Database
+
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15--alpine-4169E1?logo=postgresql&logoColor=white)
+
+### Frontend & Catalog Portal
+
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
+![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)
+
+### Languages & Libraries
+
+![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)
+![boto3](https://img.shields.io/badge/boto3-latest-232F3E?logo=amazonaws&logoColor=white)
+
+### Development & Notebook
+
+![Jupyter](https://img.shields.io/badge/Jupyter_Notebook-latest-F37626?logo=jupyter&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-20--alpine-339933?logo=nodedotjs&logoColor=white)
+
 ---
 
-## 1. Rancangan penelitian (acuan diagram)
+## 1. Rancangan penelitian
 
 ### 1.1 Arsitektur pipeline metadata dan posisi Atlas
 
@@ -682,5 +730,3 @@ Metadata per Layer:
 | `data-catalog-main/pages/quality/` | Data quality overview |
 
 ---
-
-*Catatan diagram sumber: pada diagram pipeline asli terdapat ejaan "Stagging" (staging); dalam teks akademik Anda dapat memakai ejaan standar **staging** kecuali mengutip gambar secara literal.*
