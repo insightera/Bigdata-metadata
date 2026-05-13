@@ -84,7 +84,7 @@ Detail image, port, dan cara menjalankan: lihat **§8** di bawah.
 
 ---
 
-## 4. Kerangka BAB IV — Hasil dan Pembahasan (untuk naskah tesis)
+## 4. Kerangka BAB IV — Hasil dan Pembahasan (untuk rancangan penulisan laporan penelitian)
 
 Bagian ini adalah **template** isi BAB IV. Paragraf narasi dan screenshot Anda sisipkan pada bagian yang ditandai. Angka subbab mengikuti kerangka yang Anda berikan.
 
