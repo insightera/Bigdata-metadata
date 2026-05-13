@@ -272,6 +272,7 @@ services:
     environment:
       SERVICE_NAME: metastore
       DB_DRIVER: postgres
+      SKIP_SCHEMA_INIT: "false"
       SERVICE_OPTS: >-
         -Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver
         -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://postgres:5432/metastore_db
@@ -281,6 +282,7 @@ services:
       - hive-warehouse:/opt/hive/data/warehouse
       - ./conf/hive-site.xml:/opt/hive/conf/hive-site.xml
       - ./conf/core-site.xml:/opt/hive/conf/core-site.xml
+      - ./lib/postgresql-42.6.0.jar:/opt/hive/lib/postgresql-42.6.0.jar:ro
     ports:
       - "${LHMETA_HIVE_METASTORE_PORT:-19083}:9083"   # Thrift Metastore (host)
     healthcheck:
