@@ -1,51 +1,112 @@
-# Desain Big Data Pipeline ITERA — Medallion Architecture
-## Insightera V.1.0 — Kasus: Dashboard IKU Pimpinan ITERA
+# Data Pipeline ITERA — Medallion Architecture + Metadata Governance
+
+## Kasus: Dashboard IKU Pimpinan ITERA
 
 ---
 
 ## 1. Gambaran Arsitektur
 
-Pipeline ini mengikuti skema **Medallion (Bronze → Silver → Gold)** yang dipetakan ke **Data Lake Station 1 → Station 2 → Station 3 → Station 4 → Data Warehousing**, sesuai diagram Insightera V.1.0.
+Pipeline ini mengikuti arsitektur **Medallion (Staging → Bronze → Silver → Gold)** dengan **metadata governance** terpusat di **Apache Atlas**. Setiap layer menghasilkan metadata yang dicatat ke Atlas secara paralel, sesuai diagram `Bigdata-pipeline-Metadata.jpg`.
 
 ```
-[Sumber Data] → Portal → Station 1 (Bronze/Raw)
-                          ↓ Quality Check (Metric)
-                          Station 2 (Silver/Cleaned)
-                          ↓ ETL 1 → Columnar Processing
-                          Station 3 (Gold/Aggregated)
-                          ↓ ETL 2
-                          Station 4 (Serving) → Data Warehousing
-                                                  ↓
-                                          Dashboard Pimpinan (IKU)
+[Sumber Data]
+     │  CSV (SIAK, SIMPEG, SIPPMA, SIM Kerjasama, SIM Keuangan, BAN-PT)
+     ▼
+┌──────────┐     ┌──────────────┐     ┌──────────────┐
+│ Staging  │ ──→ │ Bronze Layer │ ──→ │ Silver Layer │
+│ (CSV)    │     │ (Iceberg)    │     │ (Enriched)   │
+└──────────┘     └──────┬───────┘     └──────┬───────┘
+                        │                     │
+                   metadata B            metadata S
+                   ┌─────────┐          ┌──────────────┐
+                   │Raw Tech │          │Clean Metadata │
+                   │Lineage  │          │Quality        │
+                   │Profiling│          │Business       │
+                   │Classif. │          │Compliance     │
+                   └────┬────┘          └──────┬───────┘
+                        │                      │
+                        ▼                      ▼
+                 ┌──────────────────────────────────┐
+                 │       Apache Atlas REST API      │
+                 │   (HBase + Solr + JanusGraph)    │
+                 └──────────────┬───────────────────┘
+                                │
+                                ▼
+┌──────────────┐     ┌──────────────────┐
+│  Gold Layer  │ ──→ │  Portal Data     │
+│ (Star Schema)│     │  Catalog (Next.js)│
+└──────┬───────┘     └──────────────────┘
+       │
+  metadata G
+  ┌──────────┐
+  │Business  │
+  │KPI       │
+  │AI        │
+  │Consumption│
+  │Adv.Lineage│
+  └──────────┘
+       │
+       ▼
+  Dashboard Pimpinan (IKU)
 ```
 
 ---
 
-## 2. Sumber Data (Raw Layer — Station 1)
+## 2. Tech Stack
 
-Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari sistem akademik ITERA).
-
-### 2.1 Domain Data
-
-| No | Domain | Sistem Sumber | Format |
-|----|--------|--------------|--------|
-| 1 | Mahasiswa & Akademik | SIAK / PDDikti | CSV |
-| 2 | Dosen & Kepegawaian | SIMPEG | CSV |
-| 3 | Penelitian & PkM | SIPPMA / LPPM | CSV |
-| 4 | Kerjasama & MBKM | SIM Kerjasama | CSV |
-| 5 | Keuangan & Anggaran | SIM Keuangan | CSV |
-| 6 | Akreditasi & Mutu | BAN-PT / LP3M | CSV |
-| 7 | Sarana & Prasarana | SIMPER | CSV |
+| Layer | Teknologi | Versi | Fungsi |
+|-------|-----------|-------|--------|
+| **Object Storage** | MinIO | latest | S3-compatible storage (staging, bronze, silver, gold, warehouse) |
+| **Table Format** | Apache Iceberg | 1.5.2 | ACID table format untuk Bronze, Silver, Gold |
+| **Processing** | Apache Spark + PySpark | 3.5.1 | ETL engine untuk transformasi antar layer |
+| **Metastore** | Apache Hive Metastore | 4.0.0 | Catalog tabel Iceberg |
+| **Orchestration** | Apache Airflow | 2.9.1 | DAG orchestrator pipeline per layer |
+| **Metadata** | Apache Atlas | 2.3.0 | Metadata management, lineage, classification |
+| **Graph Storage** | Apache HBase | 2.1 | Backend JanusGraph untuk Atlas lineage graph |
+| **Search Index** | Apache Solr | 8.11.2 | Full-text search untuk Atlas discovery |
+| **Messaging** | Apache Kafka (Confluent) | 7.5.0 | Notifikasi entitas Atlas |
+| **Coordination** | Apache ZooKeeper | 7.5.0 | Koordinasi Kafka dan HBase |
+| **Database** | PostgreSQL | 15-alpine | Backend Hive Metastore, Airflow, Iceberg REST |
+| **Catalog Portal** | Next.js + React + Bootstrap | 16 / 19.2 / 5.3 | Frontend Data Catalog Management |
+| **Notebook** | Jupyter + PySpark | latest | Eksplorasi data interaktif |
+| **Containerization** | Docker + Docker Compose | 24.x / v2 | Orkestrasi seluruh layanan |
 
 ---
 
-## 3. Desain Tabel per Layer
+## 3. Sumber Data (Staging Layer)
+
+Semua sumber data disimpan sebagai **CSV** (simulasi batch dari sistem informasi akademik ITERA), kemudian di-upload ke MinIO `staging` bucket oleh Airflow DAG.
+
+### Domain Data
+
+| No | Domain | Sistem Sumber | Format | Tabel |
+|----|--------|--------------|--------|-------|
+| 1 | Mahasiswa & Akademik | SIAK / PDDikti | CSV | `raw_mahasiswa`, `raw_prestasi_mahasiswa` |
+| 2 | Lulusan & Karir | SIAK / Tracer Study | CSV | `raw_lulusan` |
+| 3 | Dosen & Kepegawaian | SIMPEG | CSV | `raw_dosen`, `raw_kegiatan_dosen` |
+| 4 | Penelitian & PkM | SIPPMA / LPPM | CSV | `raw_penelitian`, `raw_pengabdian` |
+| 5 | Kerjasama & MBKM | SIM Kerjasama | CSV | `raw_kerjasama`, `raw_mbkm` |
+| 6 | Keuangan & Anggaran | SIM Keuangan | CSV | `raw_keuangan` |
+| 7 | Akreditasi & Mutu | BAN-PT / LP3M | CSV | `raw_akreditasi` |
+| 8 | Program Studi | SIAK | CSV | `raw_prodi` |
 
 ---
 
-### LAYER BRONZE — Station 1 (Raw Data)
+## 4. Desain Tabel per Layer
 
-#### 3.1 `raw_mahasiswa`
+### 4.1 LAYER BRONZE — Raw Iceberg Tables
+
+> CSV dari staging dikonversi ke **Apache Iceberg** tables di MinIO (`s3a://warehouse/bronze/`).
+> ETL: `scripts/spark/staging_to_bronze.py` via PySpark.
+> DAG: `scripts/dags/staging_bronze_pipeline.py`.
+
+**Metadata yang dicatat ke Atlas (layer B):**
+1. Raw Technical Metadata — skema, tipe kolom, lokasi S3, format
+2. Raw Lineage — staging CSV → bronze Iceberg table
+3. Raw Data Profiling — row_count, null_count, distinct_count, completeness
+4. Raw Classification — `PII`, `Staging_Layer`, `Bronze_Layer`
+
+#### `raw_mahasiswa`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | mahasiswa_id | STRING | NIM mahasiswa |
@@ -63,7 +124,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | tanggal_masuk | DATE | Tanggal registrasi pertama |
 | ingested_at | TIMESTAMP | Waktu data masuk pipeline |
 
-#### 3.2 `raw_lulusan`
+#### `raw_lulusan`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | lulusan_id | STRING | ID unik lulusan |
@@ -79,7 +140,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | sumber_data | STRING | Tracer Study / Laporan Wisuda |
 | ingested_at | TIMESTAMP | Waktu data masuk |
 
-#### 3.3 `raw_dosen`
+#### `raw_dosen`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | dosen_id | STRING | NIDN / NIDK |
@@ -96,7 +157,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | tahun_bergabung | INT | Tahun rekrut |
 | ingested_at | TIMESTAMP | Waktu data masuk |
 
-#### 3.4 `raw_kegiatan_dosen`
+#### `raw_kegiatan_dosen`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | kegiatan_id | STRING | ID unik kegiatan |
@@ -108,7 +169,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | tahun | INT | Tahun pelaksanaan |
 | ingested_at | TIMESTAMP | Waktu data masuk |
 
-#### 3.5 `raw_penelitian`
+#### `raw_penelitian`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | penelitian_id | STRING | ID penelitian |
@@ -124,7 +185,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | diterapkan_masyarakat | BOOLEAN | True/False |
 | ingested_at | TIMESTAMP | Waktu data masuk |
 
-#### 3.6 `raw_pengabdian`
+#### `raw_pengabdian`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | pkm_id | STRING | ID PkM |
@@ -138,7 +199,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | diterapkan_masyarakat | BOOLEAN | True/False |
 | ingested_at | TIMESTAMP | Waktu data masuk |
 
-#### 3.7 `raw_kerjasama`
+#### `raw_kerjasama`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | kerjasama_id | STRING | ID MoU/PKS |
@@ -153,7 +214,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | tahun | INT | Tahun penandatanganan |
 | ingested_at | TIMESTAMP | Waktu data masuk |
 
-#### 3.8 `raw_mbkm`
+#### `raw_mbkm`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | mbkm_id | STRING | ID kegiatan MBKM |
@@ -167,7 +228,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | prestasi_nasional | BOOLEAN | True/False (jika kompetisi) |
 | ingested_at | TIMESTAMP | Waktu data masuk |
 
-#### 3.9 `raw_akreditasi`
+#### `raw_akreditasi`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | akreditasi_id | STRING | ID akreditasi |
@@ -180,7 +241,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | tahun | INT | Tahun akreditasi |
 | ingested_at | TIMESTAMP | Waktu data masuk |
 
-#### 3.10 `raw_prodi`
+#### `raw_prodi`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | prodi_id | STRING | Kode prodi |
@@ -191,7 +252,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | status | STRING | Aktif / Proses |
 | ingested_at | TIMESTAMP | Waktu data masuk |
 
-#### 3.11 `raw_keuangan`
+#### `raw_keuangan`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | anggaran_id | STRING | ID anggaran |
@@ -203,7 +264,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | triwulan | INT | 1 / 2 / 3 / 4 |
 | ingested_at | TIMESTAMP | Waktu data masuk |
 
-#### 3.12 `raw_prestasi_mahasiswa`
+#### `raw_prestasi_mahasiswa`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | prestasi_id | STRING | ID prestasi |
@@ -218,33 +279,64 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 
 ---
 
-### LAYER SILVER — Station 2 (Cleaned & Validated)
+### 4.2 LAYER SILVER — Enriched Iceberg Tables
 
-> Data dari Station 1 yang telah lulus quality check (metric ≥ 60%), dilakukan standarisasi, dedup, dan enrichment.
+> Data dari Bronze yang telah lolos quality check, di-cleaning, dan di-enrich.
+> ETL: `scripts/spark/bronze_to_silver.py` via PySpark.
+> DAG: `scripts/dags/bronze_silver_pipeline.py`.
+> Storage: `lakehouse.silver.*` Iceberg tables di MinIO (`s3a://warehouse/silver/`).
 
-#### Tabel Silver (transformasi dari Bronze):
-- `silver_mahasiswa` — Enriched dengan nama_prodi, nama_jurusan, flag is_mbkm (sks_luar_kampus ≥ 20)
-- `silver_lulusan` — Enriched dengan flag is_employed, is_lanjut_studi, is_wirausaha
-- `silver_dosen` — Enriched dengan flag is_s3, is_praktisi, is_serdos, is_aktif_tridarma
-- `silver_penelitian_pkm` — Join penelitian + pengabdian, dengan flag is_rekognisi
-- `silver_kerjasama_aktif` — Filter kerjasama aktif saja + kategori MBKM
-- `silver_akreditasi_aktif` — Akreditasi terakhir per prodi yang masih berlaku
+**Data Quality Rules:**
+
+| Status | Completeness Score | Aksi |
+|--------|-------------------|------|
+| **PASS** | ≥ 80% | Lanjut ke Silver layer |
+| **QUARANTINE** | 60% — 79% | Flag untuk review, lanjut dengan peringatan |
+| **REJECT** | < 60% | Ditolak — tidak diproses |
+
+**Metadata yang dicatat ke Atlas (layer S):**
+1. Clean Metadata — skema setelah transformasi
+2. Quality Metadata — quality_score, status (PASS/QUARANTINE)
+3. Transformation Lineage — multi-source bronze → silver
+4. Business Metadata — owner, IKU relevance, glossary terms
+5. Compliance Metadata — PII fields, data classification, retention, access
+
+**Tabel Silver (transformasi dari Bronze):**
+
+| Tabel | Sumber Bronze | Transformasi |
+|-------|--------------|-------------|
+| `silver_mahasiswa` | raw_mahasiswa + raw_prodi | Join prodi, tambah flag `is_mbkm` (sks_luar_kampus ≥ 20) |
+| `silver_lulusan` | raw_lulusan | Tambah flag `is_employed`, `is_lanjut_studi`, `is_wirausaha`, `is_terserap` |
+| `silver_dosen` | raw_dosen | Tambah flag `is_s3`, `is_praktisi`, `is_serdos`, `is_aktif_tridarma` |
+| `silver_penelitian_pkm` | raw_penelitian + raw_pengabdian | Union dan normalisasi, flag `is_rekognisi`, `is_diterapkan` |
+| `silver_kerjasama_aktif` | raw_kerjasama | Filter aktif saja, tambah flag `is_mbkm` |
+| `silver_akreditasi_aktif` | raw_akreditasi | Akreditasi terakhir per prodi yang masih berlaku, flag `is_internasional` |
 
 ---
 
-### LAYER GOLD — Station 3 (Aggregated — IKU Dashboard)
+### 4.3 LAYER GOLD — Star Schema (Iceberg)
 
-> Tabel fakta dan dimensi untuk **Data Warehousing** yang menjadi sumber **Dashboard Pimpinan**.
+> Tabel dimensi dan fakta untuk **OLAP Data Warehousing** yang menjadi sumber **Dashboard Pimpinan**.
+> ETL: `scripts/spark/silver_to_gold.py` via PySpark.
+> DAG: `scripts/dags/silver_gold_pipeline.py`.
+> Storage: `lakehouse.gold.*` Iceberg tables di MinIO (`s3a://warehouse/gold/`).
+
+**Metadata yang dicatat ke Atlas (layer G):**
+1. Business Metadata — KPI definitions, star schema relationships, ownership
+2. KPI Metadata — target Renstra per tahun, capaian aktual, formula, status
+3. AI Metadata — ML readiness, feature store candidates, suggested models
+4. Consumption Metadata — consumers (Rektor, WR, LP3M, dll), dashboard panel
+5. Advanced Lineage — full chain staging → bronze → silver → gold
 
 ---
 
-#### 3A. DIMENSI
+#### 4.3A. DIMENSI (5 tabel)
 
 ##### `dim_waktu`
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | waktu_id | INT | Surrogate key |
-| tahun | INT | Tahun |
+| tahun | INT | Tahun (2020–2025) |
 | semester | STRING | Ganjil / Genap |
 | triwulan | INT | 1–4 |
 | bulan | INT | 1–12 |
@@ -256,8 +348,8 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | prodi_id | STRING | NK dari raw |
 | nama_prodi | STRING | Nama prodi |
 | jenjang | STRING | S1/S2/D3 |
-| nama_jurusan | STRING | JTIK / JSains / JTPI |
-| nama_fakultas | STRING | Fakultas (rencana) |
+| nama_jurusan | STRING | Teknik dan Komputer / Sains / dst |
+| nama_fakultas | STRING | ITERA |
 | tahun_berdiri | INT | Tahun SK |
 | status | STRING | Aktif/Proses |
 
@@ -293,9 +385,9 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 
 ---
 
-#### 3B. TABEL FAKTA (IKU)
+#### 4.3B. TABEL FAKTA IKU (10 tabel)
 
-##### `fact_iku1_lulusan` — IKU 1: Lulusan Bekerja/Studi/Wirausaha
+##### `fact_iku1_lulusan` — IKU-1: Lulusan Bekerja/Studi/Wirausaha
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | fact_id | INT | SK |
@@ -310,7 +402,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | target_iku | FLOAT | Target sesuai Renstra |
 | capaian_iku | FLOAT | Persen capaian |
 
-##### `fact_iku2_mbkm` — IKU 2: Mahasiswa ≥20 SKS di Luar Kampus / Prestasi Nasional
+##### `fact_iku2_mbkm` — IKU-2: Mahasiswa ≥20 SKS di Luar Kampus / Prestasi Nasional
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | fact_id | INT | SK |
@@ -324,7 +416,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | target_iku | FLOAT | |
 | capaian_iku | FLOAT | |
 
-##### `fact_iku3_dosen_tridarma` — IKU 3: Dosen Aktif Tridarma Luar / Industri / Bina Prestasi
+##### `fact_iku3_dosen_tridarma` — IKU-3: Dosen Aktif Tridarma Luar / Industri / Bina Prestasi
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | fact_id | INT | SK |
@@ -340,7 +432,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | target_iku | FLOAT | |
 | capaian_iku | FLOAT | |
 
-##### `fact_iku4_kualifikasi_dosen` — IKU 4: Dosen S3/Sertifikat/Praktisi
+##### `fact_iku4_kualifikasi_dosen` — IKU-4: Dosen S3/Sertifikat/Praktisi
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | fact_id | INT | SK |
@@ -355,7 +447,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | target_iku | FLOAT | |
 | capaian_iku | FLOAT | |
 
-##### `fact_iku5_penelitian_pkm` — IKU 5: Rekognisi Internasional / Diterapkan Masyarakat per Dosen
+##### `fact_iku5_penelitian_pkm` — IKU-5: Rekognisi Internasional / Diterapkan Masyarakat per Dosen
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | fact_id | INT | SK |
@@ -369,7 +461,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | target_iku | FLOAT | |
 | capaian_iku | FLOAT | |
 
-##### `fact_iku6_kerjasama_prodi` — IKU 6: Prodi Bekerjasama dengan Mitra
+##### `fact_iku6_kerjasama_prodi` — IKU-6: Prodi Bekerjasama dengan Mitra
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | fact_id | INT | SK |
@@ -380,7 +472,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | target_iku | FLOAT | |
 | capaian_iku | FLOAT | |
 
-##### `fact_iku7_metode_pembelajaran` — IKU 7: MK Case Method / Team-Based
+##### `fact_iku7_metode_pembelajaran` — IKU-7: MK Case Method / Team-Based
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | fact_id | INT | SK |
@@ -394,7 +486,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | target_iku | FLOAT | |
 | capaian_iku | FLOAT | |
 
-##### `fact_iku8_akreditasi_internasional` — IKU 8: Prodi Akreditasi / Sertifikat Internasional
+##### `fact_iku8_akreditasi_internasional` — IKU-8: Prodi Akreditasi / Sertifikat Internasional
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | fact_id | INT | SK |
@@ -419,7 +511,7 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 | target_sakip | STRING | BB |
 | target_kinerja_anggaran | FLOAT | 80/85 |
 
-##### `fact_rekap_iku_institusi` — Ringkasan Semua IKU (untuk Executive Dashboard)
+##### `fact_rekap_iku_institusi` — Ringkasan Semua IKU (Executive Dashboard)
 | Atribut | Tipe | Keterangan |
 |---------|------|------------|
 | fact_id | INT | SK |
@@ -433,73 +525,134 @@ Semua tabel sumber disimpan dalam format **CSV** (simulasi streaming/batch dari 
 
 ---
 
-## 4. Target IKU per Tahun (dari Renstra ITERA 2020–2024)
+## 5. Target IKU per Tahun (Renstra ITERA 2020–2024)
 
-| IKU | Indikator | 2021 | 2022 | 2023 | 2024 |
-|-----|-----------|------|------|------|------|
-| IKU-1 | % Lulusan bekerja/studi/wirausaha | 75% | 76% | 77% | 78% |
-| IKU-2 | % Mahasiswa ≥20 SKS luar kampus / prestasi nasional | 20% | 25% | 30% | 35% |
-| IKU-3 | % Dosen tridarma luar/praktisi/bina prestasi | 15% | 17% | 20% | 25% |
-| IKU-4 | % Dosen S3/sertifikat kompetensi/praktisi | 30% | 32% | 40% | 50% |
-| IKU-5 | Rasio output penelitian rekognisi intl per dosen | 0.10 | 0.15 | 0.20 | 0.25 |
-| IKU-6 | % Prodi bekerjasama dengan mitra | 35% | 40% | 50% | 60% |
-| IKU-7 | % MK case method / team-based project | 25% | 30% | 35% | 40% |
-| IKU-8 | % Prodi akreditasi / sertifikat internasional | 2.5% | 2.5% | 2.5% | 3.0% |
-| SAKIP | Predikat SAKIP | BB | BB | BB | BB |
-| Anggaran | Nilai Kinerja Anggaran | 80 | 85 | 85 | 85 |
-
----
-
-## 5. Struktur Folder Output
-
-```
-data/
-├── bronze/          ← Station 1 (raw CSV)
-│   ├── raw_mahasiswa.csv
-│   ├── raw_lulusan.csv
-│   ├── raw_dosen.csv
-│   ├── raw_kegiatan_dosen.csv
-│   ├── raw_penelitian.csv
-│   ├── raw_pengabdian.csv
-│   ├── raw_kerjasama.csv
-│   ├── raw_mbkm.csv
-│   ├── raw_akreditasi.csv
-│   ├── raw_prodi.csv
-│   ├── raw_keuangan.csv
-│   └── raw_prestasi_mahasiswa.csv
-│
-├── silver/          ← Station 2 (cleaned Parquet)
-│   ├── silver_mahasiswa.parquet
-│   ├── silver_lulusan.parquet
-│   ├── silver_dosen.parquet
-│   ├── silver_penelitian_pkm.parquet
-│   ├── silver_kerjasama_aktif.parquet
-│   └── silver_akreditasi_aktif.parquet
-│
-└── gold/            ← Station 3 + 4 (DWH Parquet)
-    ├── dim_waktu.parquet
-    ├── dim_prodi.parquet
-    ├── dim_dosen.parquet
-    ├── dim_mahasiswa.parquet
-    ├── dim_topik_penelitian.parquet
-    ├── fact_iku1_lulusan.parquet
-    ├── fact_iku2_mbkm.parquet
-    ├── fact_iku3_dosen_tridarma.parquet
-    ├── fact_iku4_kualifikasi_dosen.parquet
-    ├── fact_iku5_penelitian_pkm.parquet
-    ├── fact_iku6_kerjasama_prodi.parquet
-    ├── fact_iku7_metode_pembelajaran.parquet
-    ├── fact_iku8_akreditasi_internasional.parquet
-    ├── fact_tata_kelola.parquet
-    └── fact_rekap_iku_institusi.parquet
-```
+| IKU | Indikator | 2021 | 2022 | 2023 | 2024 | 2025 |
+|-----|-----------|------|------|------|------|------|
+| IKU-1 | % Lulusan bekerja/studi/wirausaha | 75% | 76% | 77% | 78% | 80% |
+| IKU-2 | % Mahasiswa ≥20 SKS luar kampus / prestasi nasional | 20% | 25% | 30% | 35% | 40% |
+| IKU-3 | % Dosen tridarma luar/praktisi/bina prestasi | 15% | 17% | 20% | 25% | 30% |
+| IKU-4 | % Dosen S3/sertifikat kompetensi/praktisi | 30% | 32% | 40% | 50% | 55% |
+| IKU-5 | Rasio output penelitian rekognisi intl per dosen | 0.10 | 0.15 | 0.20 | 0.25 | 0.30 |
+| IKU-6 | % Prodi bekerjasama dengan mitra | 35% | 40% | 50% | 60% | 65% |
+| IKU-7 | % MK case method / team-based project | 25% | 30% | 35% | 40% | 45% |
+| IKU-8 | % Prodi akreditasi / sertifikat internasional | 2.5% | 2.5% | 2.5% | 3.0% | 5.0% |
+| SAKIP | Predikat SAKIP | BB | BB | BB | BB | A |
+| Anggaran | Nilai Kinerja Anggaran | 80 | 85 | 85 | 85 | 87 |
 
 ---
 
-## 6. Catatan Implementasi
+## 6. Metadata per Layer (sesuai diagram arsitektur)
 
-- **Bronze → Silver**: Quality check dengan threshold metric 60–79% masuk quarantine, ≥80% lanjut ke Station 2
-- **Silver → Gold**: ETL 1 menghasilkan Columnar Table Processing → Raw Clean Data → masuk Station 3
-- **Gold → DWH**: ETL 2 menghasilkan agregasi final untuk Dashboard Pimpinan (MLOps API / Portal AI)
-- Semua file gold disimpan dalam format **Parquet** untuk efisiensi columnar query
-- File bronze dalam format **CSV** mensimulasikan sumber sistem informasi akademik ITERA
+| Layer | Repositori | Metadata | Atlas Classifications |
+|-------|-----------|----------|----------------------|
+| **Bronze (B)** | Raw Technical | 1. Raw Technical Metadata<br>2. Raw Lineage<br>3. Raw Data Profiling<br>4. Raw Classification | `Staging_Layer`, `Bronze_Layer`, `PII` |
+| **Silver (S)** | Clean + Quality | 1. Clean Metadata<br>2. Quality Metadata<br>3. Transformation Lineage<br>4. Business Metadata<br>5. Compliance Metadata | `Silver_Layer`, `Quality_Pass`, `Quality_Quarantine` |
+| **Gold (G)** | KPI + BI | 1. Business Metadata<br>2. KPI Metadata<br>3. AI Metadata<br>4. Consumption Metadata<br>5. Advanced Lineage | `Gold_Layer`, `KPI_Metric`, `Star_Schema_Dimension`, `Star_Schema_Fact`, `Executive_Dashboard` |
+
+---
+
+## 7. Struktur Storage
+
+### MinIO Buckets
+
+| Bucket | Fungsi |
+|--------|--------|
+| `staging` | Landing raw CSV dari sumber |
+| `warehouse` | Iceberg tables (bronze, silver, gold namespaces) |
+| `airflow-logs` | Log Airflow |
+
+### Iceberg Catalog (Hive Metastore)
+
+```
+lakehouse
+├── bronze/               ← namespace Bronze
+│   ├── raw_mahasiswa     (Iceberg table)
+│   ├── raw_lulusan
+│   ├── raw_dosen
+│   ├── raw_kegiatan_dosen
+│   ├── raw_penelitian
+│   ├── raw_pengabdian
+│   ├── raw_kerjasama
+│   ├── raw_mbkm
+│   ├── raw_akreditasi
+│   ├── raw_prodi
+│   ├── raw_keuangan
+│   └── raw_prestasi_mahasiswa
+│
+├── silver/               ← namespace Silver
+│   ├── silver_mahasiswa
+│   ├── silver_lulusan
+│   ├── silver_dosen
+│   ├── silver_penelitian_pkm
+│   ├── silver_kerjasama_aktif
+│   └── silver_akreditasi_aktif
+│
+└── gold/                 ← namespace Gold (Star Schema)
+    ├── dim_waktu
+    ├── dim_prodi
+    ├── dim_dosen
+    ├── dim_mahasiswa
+    ├── dim_topik_penelitian
+    ├── fact_iku1_lulusan
+    ├── fact_iku2_mbkm
+    ├── fact_iku3_dosen_tridarma
+    ├── fact_iku4_kualifikasi_dosen
+    ├── fact_iku5_penelitian_pkm
+    ├── fact_iku6_kerjasama_prodi
+    ├── fact_iku7_metode_pembelajaran
+    ├── fact_iku8_akreditasi_internasional
+    ├── fact_tata_kelola
+    └── fact_rekap_iku_institusi
+```
+
+---
+
+## 8. Pipeline & Script
+
+| Pipeline | ETL Script | Atlas Script | Airflow DAG |
+|----------|-----------|-------------|-------------|
+| **Staging → Bronze** | `scripts/spark/staging_to_bronze.py` | `scripts/atlas/register_bronze_metadata.py` | `scripts/dags/staging_bronze_pipeline.py` |
+| **Bronze → Silver** | `scripts/spark/bronze_to_silver.py` | `scripts/atlas/register_silver_metadata.py` | `scripts/dags/bronze_silver_pipeline.py` |
+| **Silver → Gold** | `scripts/spark/silver_to_gold.py` | `scripts/atlas/register_gold_metadata.py` | `scripts/dags/silver_gold_pipeline.py` |
+
+**Generator data sintetis:** `scripts/generate_bronze_data.py` — menghasilkan 12 CSV untuk staging layer.
+
+---
+
+## 9. Atlas Data Catalog Summary
+
+```
+Atlas Entities:
+  Staging:  12 lakehouse_dataset (CSV sources)
+  Bronze:   12 lakehouse_dataset (Iceberg tables)
+  Silver:    6 lakehouse_dataset (Enriched tables)
+  Gold:     15 lakehouse_dataset (5 dim + 10 fact)
+  Total:   ~45 entities
+
+Lineage Processes:
+  staging → bronze:   12 lakehouse_etl_process
+  bronze → silver:     6 lakehouse_etl_process
+  silver → gold:     ~13 lakehouse_etl_process
+  Total:             ~31 processes
+
+Classifications (11):
+  PII, Staging_Layer, Bronze_Layer, Silver_Layer, Gold_Layer,
+  Quality_Pass, Quality_Quarantine, KPI_Metric,
+  Star_Schema_Dimension, Star_Schema_Fact, Executive_Dashboard
+```
+
+---
+
+## 10. Catatan Implementasi
+
+- Semua data disimpan sebagai **Apache Iceberg** tables di **MinIO** (S3-compatible), bukan file Parquet langsung
+- Iceberg menyediakan fitur **ACID transactions**, **time travel**, dan **schema evolution**
+- **Hive Metastore** (backed by PostgreSQL) menjadi catalog untuk Iceberg tables
+- **PySpark 3.5.1** digunakan sebagai engine ETL di semua pipeline
+- **Apache Airflow 2.9.1** mengorkestrasi setiap pipeline sebagai DAG terpisah
+- **Apache Atlas 2.3.0** menjadi metadata backbone — menyimpan entity, classification, lineage, dan mendukung search via **Solr** serta graph via **JanusGraph** (HBase)
+- **Data Catalog Portal** (Next.js 16) menjadi antarmuka visual untuk discovery, lineage, dan KPI dashboard
+- File CSV di staging layer mensimulasikan data dari sistem informasi akademik ITERA
+- Quality check di Silver menggunakan completeness-based scoring: PASS ≥80%, QUARANTINE 60-79%, REJECT <60%
+- Gold layer menggunakan **star schema** (5 dimensi + 10 fakta IKU) untuk OLAP query Dashboard Pimpinan
