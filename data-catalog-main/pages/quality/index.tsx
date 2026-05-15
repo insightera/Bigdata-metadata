@@ -62,9 +62,9 @@ const QualityPage: NextPage = () => {
 			</Head>
 			<SubHeader>
 				<SubHeaderLeft>
-					<Icon icon='VerifiedUser' size='2x' color='success' />
+					<Icon icon='VerifiedUser' size='2x' color='primary' />
 					<span className='h4 mb-0 ms-2 fw-bold'>Data Quality</span>
-					<Badge color='success' isLight className='ms-3'>
+					<Badge color='primary' isLight className='ms-3'>
 						Silver Layer Quality Metrics
 					</Badge>
 				</SubHeaderLeft>
@@ -81,7 +81,7 @@ const QualityPage: NextPage = () => {
 							<div className='col-md-4'>
 								<Card shadow='sm'>
 									<CardBody className='text-center py-4'>
-										<Icon icon='CheckCircle' size='3x' color='success' />
+										<Icon icon='CheckCircle' size='3x' color='primary' />
 										<h2 className='mt-3 mb-1 fw-bold text-success'>
 											{passCount}
 										</h2>
@@ -95,7 +95,7 @@ const QualityPage: NextPage = () => {
 							<div className='col-md-4'>
 								<Card shadow='sm'>
 									<CardBody className='text-center py-4'>
-										<Icon icon='Warning' size='3x' color='warning' />
+										<Icon icon='Warning' size='3x' color='primary' />
 										<h2 className='mt-3 mb-1 fw-bold text-warning'>
 											{quarantineCount}
 										</h2>
@@ -116,7 +116,7 @@ const QualityPage: NextPage = () => {
 										<p className='text-muted mb-0'>Overall Pass Rate</p>
 										<Progress
 											value={passPercent}
-											color='success'
+											color='primary'
 											height={8}
 											className='mt-2'
 											isAnimated
@@ -152,7 +152,7 @@ const QualityPage: NextPage = () => {
 												<tbody>
 													<tr>
 														<td>
-															<Badge color='success'>PASS</Badge>
+															<Badge color='primary'>PASS</Badge>
 														</td>
 														<td>≥ 80%</td>
 														<td>
@@ -160,7 +160,7 @@ const QualityPage: NextPage = () => {
 														</td>
 														<td>
 															<Badge
-																color='success'
+																color='primary'
 																isLight>
 																Quality_Pass
 															</Badge>
@@ -168,7 +168,7 @@ const QualityPage: NextPage = () => {
 													</tr>
 													<tr>
 														<td>
-															<Badge color='warning'>
+															<Badge color='primary'>
 																QUARANTINE
 															</Badge>
 														</td>
@@ -179,7 +179,7 @@ const QualityPage: NextPage = () => {
 														</td>
 														<td>
 															<Badge
-																color='warning'
+																color='primary'
 																isLight>
 																Quality_Quarantine
 															</Badge>
@@ -187,7 +187,7 @@ const QualityPage: NextPage = () => {
 													</tr>
 													<tr>
 														<td>
-															<Badge color='danger'>
+															<Badge color='primary'>
 																REJECT
 															</Badge>
 														</td>
@@ -265,12 +265,12 @@ const QualityPage: NextPage = () => {
 																			{name}
 																		</h6>
 																		{isPass && (
-																			<Badge color='success'>
+																			<Badge color='primary'>
 																				PASS
 																			</Badge>
 																		)}
 																		{isQuar && (
-																			<Badge color='warning'>
+																			<Badge color='primary'>
 																				QUARANTINE
 																			</Badge>
 																		)}

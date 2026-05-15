@@ -145,7 +145,7 @@ const LineageDetailPage: NextPage = () => {
 					</Badge>
 				</SubHeaderLeft>
 				<SubHeaderRight>
-					<Badge color='info' isLight className='px-3 py-2'>
+					<Badge color='primary' isLight className='px-3 py-2'>
 						{nodes.length} entities · {edges.length} relations
 					</Badge>
 				</SubHeaderRight>
@@ -154,7 +154,7 @@ const LineageDetailPage: NextPage = () => {
 				{error && (
 					<Card shadow='sm' className='mb-4'>
 						<CardBody className='text-center py-4'>
-							<Icon icon='Warning' size='3x' color='warning' />
+							<Icon icon='Warning' size='3x' color='primary' />
 							<h5 className='mt-2'>Lineage data unavailable</h5>
 							<p className='text-muted'>{error}</p>
 						</CardBody>
@@ -211,9 +211,9 @@ const LineageDetailPage: NextPage = () => {
 															isBase
 																? 'border-primary bg-l25-primary'
 																: isInput
-																	? 'border-info bg-l10-info'
+																	? 'border-primary bg-l10-primary'
 																	: isOutput
-																		? 'border-success bg-l10-success'
+																		? 'border-primary bg-l10-primary'
 																		: 'bg-white'
 														}`}>
 														<div className='d-flex align-items-center'>

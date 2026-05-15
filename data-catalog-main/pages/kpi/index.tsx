@@ -34,7 +34,7 @@ const IKU_DEFINITIONS = [
 		code: 'IKU-2',
 		name: 'Mahasiswa MBKM / prestasi nasional',
 		icon: 'EmojiEvents',
-		color: 'success',
+		color: 'primary',
 		target2024: 35,
 		fact: 'fact_iku2_mbkm',
 	},
@@ -42,7 +42,7 @@ const IKU_DEFINITIONS = [
 		code: 'IKU-3',
 		name: 'Dosen tridarma luar/praktisi',
 		icon: 'Groups',
-		color: 'info',
+		color: 'primary',
 		target2024: 25,
 		fact: 'fact_iku3_dosen_tridarma',
 	},
@@ -50,7 +50,7 @@ const IKU_DEFINITIONS = [
 		code: 'IKU-4',
 		name: 'Dosen S3/sertifikat/praktisi',
 		icon: 'WorkspacePremium',
-		color: 'warning',
+		color: 'primary',
 		target2024: 50,
 		fact: 'fact_iku4_kualifikasi_dosen',
 	},
@@ -58,7 +58,7 @@ const IKU_DEFINITIONS = [
 		code: 'IKU-5',
 		name: 'Rasio output penelitian intl per dosen',
 		icon: 'Science',
-		color: 'danger',
+		color: 'primary',
 		target2024: 0.25,
 		fact: 'fact_iku5_penelitian_pkm',
 	},
@@ -74,7 +74,7 @@ const IKU_DEFINITIONS = [
 		code: 'IKU-7',
 		name: 'MK case method / team-based',
 		icon: 'AutoStories',
-		color: 'info',
+		color: 'primary',
 		target2024: 40,
 		fact: 'fact_iku7_metode_pembelajaran',
 	},
@@ -82,7 +82,7 @@ const IKU_DEFINITIONS = [
 		code: 'IKU-8',
 		name: 'Prodi akreditasi internasional',
 		icon: 'Public',
-		color: 'success',
+		color: 'primary',
 		target2024: 3.0,
 		fact: 'fact_iku8_akreditasi_internasional',
 	},
@@ -125,7 +125,7 @@ const KpiDashboard: NextPage = () => {
 				<SubHeaderLeft>
 					<Icon icon='BarChart' size='2x' color='primary' />
 					<span className='h4 mb-0 ms-2 fw-bold'>KPI Dashboard — IKU ITERA</span>
-					<Badge color='success' isLight className='ms-3'>
+					<Badge color='primary' isLight className='ms-3'>
 						Gold Layer Star Schema
 					</Badge>
 				</SubHeaderLeft>
@@ -136,7 +136,7 @@ const KpiDashboard: NextPage = () => {
 					<div className='col-md-3'>
 						<Card shadow='sm'>
 							<CardBody className='text-center py-4'>
-								<Icon icon='Star' size='3x' color='success' />
+								<Icon icon='Star' size='3x' color='primary' />
 								<h2 className='mt-3 mb-1 fw-bold'>{goldCount}</h2>
 								<p className='text-muted mb-0'>Gold Tables</p>
 							</CardBody>
@@ -154,7 +154,7 @@ const KpiDashboard: NextPage = () => {
 					<div className='col-md-3'>
 						<Card shadow='sm'>
 							<CardBody className='text-center py-4'>
-								<Icon icon='ViewColumn' size='3x' color='info' />
+								<Icon icon='ViewColumn' size='3x' color='primary' />
 								<h2 className='mt-3 mb-1 fw-bold'>5</h2>
 								<p className='text-muted mb-0'>Dimensions</p>
 							</CardBody>
@@ -163,7 +163,7 @@ const KpiDashboard: NextPage = () => {
 					<div className='col-md-3'>
 						<Card shadow='sm'>
 							<CardBody className='text-center py-4'>
-								<Icon icon='TableChart' size='3x' color='warning' />
+								<Icon icon='TableChart' size='3x' color='primary' />
 								<h2 className='mt-3 mb-1 fw-bold'>10</h2>
 								<p className='text-muted mb-0'>Fact Tables</p>
 							</CardBody>
@@ -341,7 +341,7 @@ const KpiDashboard: NextPage = () => {
 								</CardLabel>
 							</CardHeader>
 							<CardBody>
-								<div className='p-3 bg-l10-success rounded-3 text-center'>
+								<div className='p-3 bg-l10-primary rounded-3 text-center'>
 									<h6 className='mb-3'>Gold Layer Architecture</h6>
 									<div className='d-flex justify-content-center gap-2 flex-wrap mb-3'>
 										{[
@@ -353,7 +353,7 @@ const KpiDashboard: NextPage = () => {
 										].map((dim) => (
 											<Badge
 												key={dim}
-												color='info'
+												color='primary'
 												isLight
 												className='px-3 py-2'>
 												<Icon icon='ViewColumn' className='me-1' />
@@ -365,7 +365,7 @@ const KpiDashboard: NextPage = () => {
 										icon='ArrowDownward'
 										size='2x'
 										className='my-2'
-										color='success'
+										color='primary'
 									/>
 									<div className='d-flex justify-content-center gap-2 flex-wrap'>
 										{IKU_DEFINITIONS.map((iku) => (

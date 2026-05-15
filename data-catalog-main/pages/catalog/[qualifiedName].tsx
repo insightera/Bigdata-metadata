@@ -26,22 +26,22 @@ import Alert from '../../components/bootstrap/Alert';
 import { layerFromQualifiedName, layerColor, classificationColor } from '../../helpers/atlasApi';
 
 const LIFECYCLE_STAGES = [
-	{ id: 1, label: 'Domain Creation', icon: 'FolderOpen', color: 'secondary' },
-	{ id: 2, label: 'Asset Selection', icon: 'PlaylistAddCheck', color: 'secondary' },
-	{ id: 3, label: 'Asset Created', icon: 'AddCircle', color: 'info' },
-	{ id: 4, label: 'Raw (Sandbox)', icon: 'RawOn', color: 'info' },
+	{ id: 1, label: 'Domain Creation', icon: 'FolderOpen', color: 'primary' },
+	{ id: 2, label: 'Asset Selection', icon: 'PlaylistAddCheck', color: 'primary' },
+	{ id: 3, label: 'Asset Created', icon: 'AddCircle', color: 'primary' },
+	{ id: 4, label: 'Raw (Sandbox)', icon: 'RawOn', color: 'primary' },
 	{ id: 5, label: 'Description', icon: 'Description', color: 'primary' },
 	{ id: 6, label: 'Glossary Terms', icon: 'MenuBook', color: 'primary' },
 	{ id: 7, label: 'Lineage', icon: 'AccountTree', color: 'primary' },
 	{ id: 8, label: 'Graph', icon: 'BubbleChart', color: 'primary' },
 	{ id: 9, label: 'Enriched via API', icon: 'Api', color: 'primary' },
-	{ id: 10, label: 'Published (Production)', icon: 'Publish', color: 'success' },
-	{ id: 11, label: 'Discoverable', icon: 'Search', color: 'success' },
-	{ id: 12, label: 'Requestable', icon: 'Send', color: 'success' },
-	{ id: 13, label: 'Shared', icon: 'Share', color: 'success' },
-	{ id: 14, label: 'New Data Created', icon: 'NoteAdd', color: 'warning' },
-	{ id: 15, label: 'New Lineage', icon: 'MergeType', color: 'warning' },
-	{ id: 16, label: 'Updated', icon: 'Edit', color: 'warning' },
+	{ id: 10, label: 'Published (Production)', icon: 'Publish', color: 'primary' },
+	{ id: 11, label: 'Discoverable', icon: 'Search', color: 'primary' },
+	{ id: 12, label: 'Requestable', icon: 'Send', color: 'primary' },
+	{ id: 13, label: 'Shared', icon: 'Share', color: 'primary' },
+	{ id: 14, label: 'New Data Created', icon: 'NoteAdd', color: 'primary' },
+	{ id: 15, label: 'New Lineage', icon: 'MergeType', color: 'primary' },
+	{ id: 16, label: 'Updated', icon: 'Edit', color: 'primary' },
 ];
 
 function deriveLifecycleStage(layer: string, classifications: any[], attrs: any): number {
@@ -58,10 +58,10 @@ function deriveLifecycleStage(layer: string, classifications: any[], attrs: any)
 }
 
 function lifecycleZone(stage: number): { zone: string; color: string } {
-	if (stage <= 4) return { zone: 'Sandbox', color: 'info' };
+	if (stage <= 4) return { zone: 'Sandbox', color: 'primary' };
 	if (stage <= 9) return { zone: 'Enrichment', color: 'primary' };
-	if (stage <= 13) return { zone: 'Production', color: 'success' };
-	return { zone: 'Evolution', color: 'warning' };
+	if (stage <= 13) return { zone: 'Production', color: 'primary' };
+	return { zone: 'Evolution', color: 'primary' };
 }
 
 const DatasetDetailPage: NextPage = () => {
@@ -134,7 +134,7 @@ const DatasetDetailPage: NextPage = () => {
 				<Page>
 					<Card shadow='sm'>
 						<CardBody className='text-center py-5'>
-							<Icon icon='Error' size='4x' color='danger' />
+							<Icon icon='Error' size='4x' color='primary' />
 							<h4 className='mt-3'>Entity Not Found</h4>
 							<p className='text-muted'>{error || `Could not find: ${qn}`}</p>
 							<Button color='primary' onClick={() => router.push('/catalog')}>
@@ -284,7 +284,7 @@ const DatasetDetailPage: NextPage = () => {
 				</SubHeaderLeft>
 				<SubHeaderRight>
 					<Button
-						color='success'
+						color='primary'
 						isLight
 						icon='Edit'
 						className='me-2'
@@ -296,7 +296,7 @@ const DatasetDetailPage: NextPage = () => {
 						Edit
 					</Button>
 					<Button
-						color='warning'
+						color='primary'
 						isLight
 						icon='Lock'
 						className='me-2'
@@ -304,7 +304,7 @@ const DatasetDetailPage: NextPage = () => {
 						Request Access
 					</Button>
 					<Button
-						color='info'
+						color='primary'
 						isLight
 						icon='Share'
 						className='me-2'
@@ -312,7 +312,7 @@ const DatasetDetailPage: NextPage = () => {
 						Share
 					</Button>
 					<Button
-						color='secondary'
+						color='primary'
 						isLight
 						icon='Download'
 						className='me-2'
@@ -321,7 +321,7 @@ const DatasetDetailPage: NextPage = () => {
 					</Button>
 					{entity.guid && (
 						<Button
-							color='info'
+							color='primary'
 							isLight
 							icon='AccountTree'
 							onClick={() => router.push(`/lineage/${entity.guid}`)}>
@@ -419,12 +419,12 @@ const DatasetDetailPage: NextPage = () => {
 								{piiColumns.length > 0 && (
 									<div className='mt-4'>
 										<h6>
-											<Icon icon='Security' color='danger' className='me-1' />
+											<Icon icon='Security' color='primary' className='me-1' />
 											PII Columns
 										</h6>
 										<div className='d-flex flex-wrap gap-1'>
 											{piiColumns.map((col: string) => (
-												<Badge key={col} color='danger' isLight>
+												<Badge key={col} color='primary' isLight>
 													{col}
 												</Badge>
 											))}
@@ -476,7 +476,7 @@ const DatasetDetailPage: NextPage = () => {
 															<td>
 																{piiColumns.includes(col) && (
 																	<Badge
-																		color='danger'
+																		color='primary'
 																		isLight>
 																		PII
 																	</Badge>
@@ -596,7 +596,7 @@ const DatasetDetailPage: NextPage = () => {
 													{aiMeta.suggested_models.map((m: string) => (
 														<Badge
 															key={m}
-															color='info'
+															color='primary'
 															isLight
 															className='me-1'>
 															{m}
@@ -656,7 +656,7 @@ const DatasetDetailPage: NextPage = () => {
 															? `bg-l25-${s.color} border border-${s.color}`
 															: isActive
 															? `bg-l10-${s.color}`
-															: 'bg-l10-secondary'
+															: 'bg-l10-primary'
 													}`}
 													style={{
 														minWidth: 72,
@@ -701,7 +701,7 @@ const DatasetDetailPage: NextPage = () => {
 								<div className='mt-3 d-flex gap-3'>
 									<div className='d-flex align-items-center'>
 										<div
-											className='bg-l25-info rounded-circle me-1'
+											className='bg-l25-primary rounded-circle me-1'
 											style={{ width: 12, height: 12 }}
 										/>
 										<small>Sandbox (1-4)</small>
@@ -715,14 +715,14 @@ const DatasetDetailPage: NextPage = () => {
 									</div>
 									<div className='d-flex align-items-center'>
 										<div
-											className='bg-l25-success rounded-circle me-1'
+											className='bg-l25-primary rounded-circle me-1'
 											style={{ width: 12, height: 12 }}
 										/>
 										<small>Production (10-13)</small>
 									</div>
 									<div className='d-flex align-items-center'>
 										<div
-											className='bg-l25-warning rounded-circle me-1'
+											className='bg-l25-primary rounded-circle me-1'
 											style={{ width: 12, height: 12 }}
 										/>
 										<small>Evolution (14-16)</small>
@@ -775,7 +775,7 @@ const DatasetDetailPage: NextPage = () => {
 						<Button color='light' onClick={() => setShowEditModal(false)}>
 							Cancel
 						</Button>
-						<Button color='success' icon='Save' onClick={handleUpdateMetadata}>
+						<Button color='primary' icon='Save' onClick={handleUpdateMetadata}>
 							Save Changes
 						</Button>
 					</ModalFooter>
@@ -819,7 +819,7 @@ const DatasetDetailPage: NextPage = () => {
 						</div>
 						<div className='mb-3'>
 							<label className='form-label'>Dataset</label>
-							<div className='p-2 bg-light rounded-2'>
+							<div className='p-2 bg-l10-primary rounded-2'>
 								<strong>{attrs.name}</strong> ({layer.toUpperCase()})
 								<br />
 								<small className='text-muted'>{qn}</small>
@@ -831,7 +831,7 @@ const DatasetDetailPage: NextPage = () => {
 							Cancel
 						</Button>
 						<Button
-							color='warning'
+							color='primary'
 							icon='Send'
 							onClick={handleRequestAccess}
 							isDisable={!requestEmail}>
@@ -876,7 +876,7 @@ const DatasetDetailPage: NextPage = () => {
 								placeholder='Check out this dataset...'
 							/>
 						</div>
-						<div className='mb-3 p-2 bg-light rounded-2'>
+						<div className='mb-3 p-2 bg-l10-primary rounded-2'>
 							<small>
 								<strong>Link:</strong>{' '}
 								<code>
@@ -886,7 +886,7 @@ const DatasetDetailPage: NextPage = () => {
 						</div>
 						<div className='d-flex gap-2'>
 							<Button
-								color='secondary'
+								color='primary'
 								isLight
 								icon='ContentCopy'
 								size='sm'
@@ -900,7 +900,7 @@ const DatasetDetailPage: NextPage = () => {
 								Copy Link
 							</Button>
 							<Button
-								color='secondary'
+								color='primary'
 								isLight
 								icon='Download'
 								size='sm'
@@ -914,7 +914,7 @@ const DatasetDetailPage: NextPage = () => {
 							Cancel
 						</Button>
 						<Button
-							color='info'
+							color='primary'
 							icon='Send'
 							onClick={handleShare}
 							isDisable={!shareEmail}>

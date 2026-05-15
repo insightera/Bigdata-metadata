@@ -77,9 +77,9 @@ const ClassificationsPage: NextPage = () => {
 			</Head>
 			<SubHeader>
 				<SubHeaderLeft>
-					<Icon icon='Label' size='2x' color='warning' />
+					<Icon icon='Label' size='2x' color='primary' />
 					<span className='h4 mb-0 ms-2 fw-bold'>Classifications</span>
-					<Badge color='warning' isLight className='ms-3'>
+					<Badge color='primary' isLight className='ms-3'>
 						{ALL_CLASSIFICATIONS.length} classification types
 					</Badge>
 				</SubHeaderLeft>

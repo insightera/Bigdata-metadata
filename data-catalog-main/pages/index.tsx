@@ -35,7 +35,7 @@ const LAYER_CONFIG: LayerStats[] = [
 		name: 'Staging_Layer',
 		label: 'Staging',
 		icon: 'CloudUpload',
-		color: 'secondary',
+		color: 'primary',
 		count: 0,
 		description: 'Raw source data landing zone',
 		metadata: ['Source files', 'CSV format'],
@@ -44,7 +44,7 @@ const LAYER_CONFIG: LayerStats[] = [
 		name: 'Bronze_Layer',
 		label: 'Bronze',
 		icon: 'Storage',
-		color: 'warning',
+		color: 'primary',
 		count: 0,
 		description: 'Raw Iceberg tables with profiling',
 		metadata: ['Technical', 'Lineage', 'Profiling', 'Classification'],
@@ -53,7 +53,7 @@ const LAYER_CONFIG: LayerStats[] = [
 		name: 'Silver_Layer',
 		label: 'Silver',
 		icon: 'AutoFixHigh',
-		color: 'info',
+		color: 'primary',
 		count: 0,
 		description: 'Cleaned & enriched with quality',
 		metadata: ['Clean', 'Quality', 'Business', 'Compliance'],
@@ -62,7 +62,7 @@ const LAYER_CONFIG: LayerStats[] = [
 		name: 'Gold_Layer',
 		label: 'Gold',
 		icon: 'Star',
-		color: 'success',
+		color: 'primary',
 		count: 0,
 		description: 'Star schema for OLAP Dashboard',
 		metadata: ['Business', 'KPI', 'AI', 'Consumption', 'Lineage'],
@@ -70,13 +70,13 @@ const LAYER_CONFIG: LayerStats[] = [
 ];
 
 const CLASSIFICATION_LIST = [
-	{ name: 'PII', icon: 'Security', color: 'danger' },
+	{ name: 'PII', icon: 'Security', color: 'primary' },
 	{ name: 'KPI_Metric', icon: 'BarChart', color: 'primary' },
 	{ name: 'Star_Schema_Fact', icon: 'TableChart', color: 'primary' },
-	{ name: 'Star_Schema_Dimension', icon: 'ViewColumn', color: 'info' },
-	{ name: 'Executive_Dashboard', icon: 'Dashboard', color: 'success' },
-	{ name: 'Quality_Pass', icon: 'CheckCircle', color: 'success' },
-	{ name: 'Quality_Quarantine', icon: 'Warning', color: 'warning' },
+	{ name: 'Star_Schema_Dimension', icon: 'ViewColumn', color: 'primary' },
+	{ name: 'Executive_Dashboard', icon: 'Dashboard', color: 'primary' },
+	{ name: 'Quality_Pass', icon: 'CheckCircle', color: 'primary' },
+	{ name: 'Quality_Quarantine', icon: 'Warning', color: 'primary' },
 ];
 
 const Index: NextPage = () => {
@@ -172,7 +172,7 @@ const Index: NextPage = () => {
 					<div className='col-md-3'>
 						<Card shadow='sm' className='border-0'>
 							<CardBody className='text-center py-4'>
-								<Icon icon='AccountTree' size='3x' color='info' />
+								<Icon icon='AccountTree' size='3x' color='primary' />
 								<h2 className='mt-3 mb-1 fw-bold'>{totalProcesses}</h2>
 								<p className='text-muted mb-0'>Lineage Processes</p>
 							</CardBody>
@@ -181,7 +181,7 @@ const Index: NextPage = () => {
 					<div className='col-md-3'>
 						<Card shadow='sm' className='border-0'>
 							<CardBody className='text-center py-4'>
-								<Icon icon='Layers' size='3x' color='success' />
+								<Icon icon='Layers' size='3x' color='primary' />
 								<h2 className='mt-3 mb-1 fw-bold'>4</h2>
 								<p className='text-muted mb-0'>Medallion Layers</p>
 							</CardBody>
@@ -190,7 +190,7 @@ const Index: NextPage = () => {
 					<div className='col-md-3'>
 						<Card shadow='sm' className='border-0'>
 							<CardBody className='text-center py-4'>
-								<Icon icon='Label' size='3x' color='warning' />
+								<Icon icon='Label' size='3x' color='primary' />
 								<h2 className='mt-3 mb-1 fw-bold'>11</h2>
 								<p className='text-muted mb-0'>Classifications</p>
 							</CardBody>
@@ -275,24 +275,24 @@ const Index: NextPage = () => {
 								{/* Pipeline flow visualization */}
 								<div className='mt-3 p-3 bg-l10-primary rounded-3'>
 									<div className='d-flex align-items-center justify-content-center flex-wrap'>
-										<Badge color='secondary' className='px-3 py-2'>
+										<Badge color='primary' isLight className='px-3 py-2'>
 											<Icon icon='CloudUpload' className='me-1' /> Source CSV
 										</Badge>
 										<Icon icon='ArrowForward' className='mx-2' />
-										<Badge color='secondary' className='px-3 py-2'>
+										<Badge color='primary' isLight className='px-3 py-2'>
 											<Icon icon='CloudUpload' className='me-1' /> Staging
 										</Badge>
 										<Icon icon='ArrowForward' className='mx-2' />
-										<Badge color='warning' className='px-3 py-2'>
+										<Badge color='primary' isLight className='px-3 py-2'>
 											<Icon icon='Storage' className='me-1' /> Bronze (Iceberg)
 										</Badge>
 										<Icon icon='ArrowForward' className='mx-2' />
-										<Badge color='info' className='px-3 py-2'>
+										<Badge color='primary' isLight className='px-3 py-2'>
 											<Icon icon='AutoFixHigh' className='me-1' /> Silver
 											(Enriched)
 										</Badge>
 										<Icon icon='ArrowForward' className='mx-2' />
-										<Badge color='success' className='px-3 py-2'>
+										<Badge color='primary' isLight className='px-3 py-2'>
 											<Icon icon='Star' className='me-1' /> Gold (Star
 											Schema)
 										</Badge>
@@ -399,7 +399,7 @@ const Index: NextPage = () => {
 										</div>
 										<Progress
 											value={item.value}
-											color='success'
+											color='primary'
 											height={8}
 											isAnimated
 										/>
@@ -416,7 +416,7 @@ const Index: NextPage = () => {
 									</div>
 								))}
 
-								<div className='mt-4 p-3 bg-l10-info rounded-3'>
+								<div className='mt-4 p-3 bg-l10-primary rounded-3'>
 									<h6 className='mb-2'>
 										<Icon icon='Info' className='me-1' /> Metadata per Layer
 									</h6>

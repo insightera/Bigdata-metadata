@@ -173,7 +173,7 @@ const CatalogPage: NextPage = () => {
 				) : entities.length === 0 ? (
 					<Card shadow='sm'>
 						<CardBody className='text-center py-5'>
-							<Icon icon='SearchOff' size='4x' color='secondary' />
+							<Icon icon='SearchOff' size='4x' color='primary' />
 							<h4 className='mt-3'>No datasets found</h4>
 							<p className='text-muted'>
 								Try adjusting your filters or search query.

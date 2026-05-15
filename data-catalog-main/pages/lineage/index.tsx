@@ -60,7 +60,7 @@ const LineageIndexPage: NextPage = () => {
 				<SubHeaderLeft>
 					<Icon icon='AccountTree' size='2x' color='primary' />
 					<span className='h4 mb-0 ms-2 fw-bold'>Data Lineage</span>
-					<Badge color='info' isLight className='ms-3'>
+					<Badge color='primary' isLight className='ms-3'>
 						Select an entity to explore lineage
 					</Badge>
 				</SubHeaderLeft>

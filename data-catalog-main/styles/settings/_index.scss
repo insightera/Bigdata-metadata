@@ -41,14 +41,15 @@ $grays: (
 	'900': $gray-900,
 );
 
-$primary: #6c5dd3; // Don't forget to make changes to the .env file as well.
-$secondary: #ffa2c0; // Don't forget to make changes to the .env file as well.
-$success: #46bcaa; // Don't forget to make changes to the .env file as well.
-$info: #4d69fa; // Don't forget to make changes to the .env file as well.
-$warning: #ffcf52; // Don't forget to make changes to the .env file as well.
-$danger: #f35421; // Don't forget to make changes to the .env file as well.
-$light: #e7eef8; // Don't forget to make changes to the .env file as well.
-$dark: #1f2128; // Don't forget to make changes to the .env file as well.
+// Warna dominan tunggal — semantic Bootstrap memakai turunan primary agar konsisten (termasuk dark mode).
+$primary: #6c5dd3;
+$secondary: $primary;
+$success: $primary;
+$info: $primary;
+$warning: $primary;
+$danger: $primary;
+$light: color.mix($primary, $white, 12%);
+$dark: #1f2128;
 
 //
 // Options
@@ -175,7 +176,8 @@ $font-weight-normal: 400;
 $font-weight-bold: 700;
 $font-weight-bolder: bolder;
 
-$text-muted: rgba($gray-600, 0.75) !default;
+$text-muted: rgba($gray-600, 0.85) !default;
+$dark-text-muted: rgba($dark-body-color, 0.8) !default;
 
 // Tables
 $table-color: $body-color;

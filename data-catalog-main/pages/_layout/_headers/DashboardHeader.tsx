@@ -66,7 +66,7 @@ const DashboardHeader = () => {
 							className='btn-only-icon'>
 							<Icon
 								icon={darkModeStatus ? 'DarkMode' : 'LightMode'}
-								color={darkModeStatus ? 'info' : 'warning'}
+								color='primary'
 								className='btn-icon'
 							/>
 						</Button>

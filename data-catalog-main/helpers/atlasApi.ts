@@ -108,29 +108,11 @@ export function layerFromQualifiedName(qn: string): string {
 	return 'unknown';
 }
 
-export function layerColor(layer: string): string {
-	switch (layer) {
-		case 'staging': return 'secondary';
-		case 'bronze': return 'warning';
-		case 'silver': return 'info';
-		case 'gold': return 'success';
-		default: return 'light';
-	}
+/** Satu warna dominan (primary) untuk badge, ikon, dan border layer/classification. */
+export function layerColor(_layer: string): string {
+	return 'primary';
 }
 
-export function classificationColor(cls: string): string {
-	switch (cls) {
-		case 'PII': return 'danger';
-		case 'Gold_Layer': return 'success';
-		case 'Silver_Layer': return 'info';
-		case 'Bronze_Layer': return 'warning';
-		case 'Staging_Layer': return 'secondary';
-		case 'Quality_Pass': return 'success';
-		case 'Quality_Quarantine': return 'warning';
-		case 'KPI_Metric': return 'primary';
-		case 'Star_Schema_Dimension': return 'info';
-		case 'Star_Schema_Fact': return 'primary';
-		case 'Executive_Dashboard': return 'success';
-		default: return 'light';
-	}
+export function classificationColor(_cls: string): string {
+	return 'primary';
 }

@@ -32,24 +32,21 @@ const Chart: FC<IChartProps> = ({
 				<ReactApexChart
 					options={{
 						colors: [
-							String(process.env.NEXT_PUBLIC_PRIMARY_COLOR),
-							String(process.env.NEXT_PUBLIC_SECONDARY_COLOR),
-							String(process.env.NEXT_PUBLIC_SUCCESS_COLOR),
-							String(process.env.NEXT_PUBLIC_INFO_COLOR),
-							String(process.env.NEXT_PUBLIC_WARNING_COLOR),
-							String(process.env.NEXT_PUBLIC_DANGER_COLOR),
+							String(process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#6c5dd3'),
+							String(process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#6c5dd3'),
+							String(process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#6c5dd3'),
 						],
 						plotOptions: {
 							candlestick: {
 								colors: {
-									upward: String(process.env.NEXT_PUBLIC_SUCCESS_COLOR),
-									downward: String(process.env.NEXT_PUBLIC_DANGER_COLOR),
+									upward: String(process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#6c5dd3'),
+									downward: String(process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#6c5dd3'),
 								},
 							},
 							boxPlot: {
 								colors: {
-									upper: String(process.env.NEXT_PUBLIC_SUCCESS_COLOR),
-									lower: String(process.env.NEXT_PUBLIC_DANGER_COLOR),
+									upper: String(process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#6c5dd3'),
+									lower: String(process.env.NEXT_PUBLIC_PRIMARY_COLOR || '#6c5dd3'),
 								},
 							},
 						},

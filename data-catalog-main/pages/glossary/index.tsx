@@ -164,12 +164,12 @@ const GlossaryPage: NextPage = () => {
 						{terms.length} terms
 					</Badge>
 					{atlasConnected ? (
-						<Badge color='success' isLight className='ms-2'>
+						<Badge color='primary' isLight className='ms-2'>
 							<Icon icon='Cloud' className='me-1' />
 							Atlas Connected
 						</Badge>
 					) : (
-						<Badge color='secondary' isLight className='ms-2'>
+						<Badge color='primary' isLight className='ms-2'>
 							Local Glossary
 						</Badge>
 					)}
@@ -187,10 +187,10 @@ const GlossaryPage: NextPage = () => {
 				{/* Lifecycle stage indicator */}
 				<div className='row mb-4'>
 					<div className='col-12'>
-						<Card shadow='sm' className='bg-l10-info'>
+						<Card shadow='sm' className='bg-l10-primary'>
 							<CardBody className='py-3'>
 								<div className='d-flex align-items-center'>
-									<Icon icon='Info' color='info' size='lg' className='me-2' />
+									<Icon icon='Info' color='primary' size='lg' className='me-2' />
 									<small>
 										<strong>Lifecycle Stage 6 — Glossary Terms:</strong>{' '}
 										Glossary terms memperkaya konteks bisnis aset data.
@@ -322,9 +322,9 @@ const GlossaryPage: NextPage = () => {
 							/>
 						</div>
 						{atlasConnected && (
-							<div className='p-2 bg-l10-success rounded-2'>
+							<div className='p-2 bg-l10-primary rounded-2'>
 								<small>
-									<Icon icon='Cloud' className='me-1' color='success' />
+									<Icon icon='Cloud' className='me-1' color='primary' />
 									Term will also be added to Atlas Glossary API
 								</small>
 							</div>
