@@ -20,6 +20,12 @@ const nextConfig = withInterceptStdout(
 			disableStaticImages: true
 		},
 		reactStrictMode: true,
+		// Akses dev dari IP/host eksternal (mis. VM 103.174.114.177)
+		allowedDevOrigins: [
+			'103.174.114.177',
+			'localhost',
+			'127.0.0.1',
+		],
 		i18n,
 		// webpack(config, options) {
 		// 	return config
