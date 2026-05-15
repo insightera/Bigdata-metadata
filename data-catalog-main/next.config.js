@@ -4,6 +4,7 @@ const withImages = require('next-images');
 const withInterceptStdout = require('next-intercept-stdout');
 
 var hideWarn = [
+	'Unrecognized key(s) in object: \'serverRuntimeConfig\'',
 	'Invalid next.config.js options detected:',
 	'The value at .experimental has an unexpected property, images, which is not in the list of allowed properties',
 	'https://nextjs.org/docs/messages/invalid-next-config',

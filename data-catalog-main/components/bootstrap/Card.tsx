@@ -10,8 +10,6 @@ import React, {
 	useState,
 } from 'react';
 import classNames from 'classnames';
-import { atomOneLight } from 'react-syntax-highlighter/dist/cjs/styles/hljs';
-import SyntaxHighlighter from 'react-syntax-highlighter';
 import TagWrapper from '../TagWrapper';
 import Icon from '../icon/Icon';
 import Button from './Button';
@@ -187,40 +185,18 @@ interface ICardCodeViewProps {
 	children: string;
 	language?: string;
 	customStyle?: CSSProperties;
-	isPrismJs?: boolean;
 	className?: string;
 }
 export const CardCodeView: FC<ICardCodeViewProps> = memo(
 	// eslint-disable-next-line react/prop-types
-	({ children, language = 'jsx', customStyle, isPrismJs = true, className }) => {
-		if (isPrismJs) {
-			return (
-				<PrismCode
-					code={children}
-					language={language}
-					className={classNames('my-0', className)}
-					style={customStyle}
-				/>
-			);
-		}
-		return (
-			<SyntaxHighlighter
-				language={language}
-				style={atomOneLight}
-				customStyle={{
-					borderRadius: 13,
-					backgroundColor: 'var(--bs-light)',
-					fontSize: '1rem',
-					padding: '1.5rem 2rem',
-					...customStyle,
-				}}
-				wrapLongLines
-				PreTag='code'
-				className={classNames('shadow-sm', className)}>
-				{children}
-			</SyntaxHighlighter>
-		);
-	},
+	({ children, language = 'jsx', customStyle, className }) => (
+		<PrismCode
+			code={children}
+			language={language}
+			className={classNames('my-0', className)}
+			style={customStyle}
+		/>
+	),
 );
 CardCodeView.displayName = 'CardCodeView';
 
