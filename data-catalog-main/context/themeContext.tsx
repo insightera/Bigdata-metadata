@@ -21,10 +21,14 @@ const ThemeContext = createContext<IThemeContextProps>({} as IThemeContextProps)
 interface IThemeContextProviderProps {
 	children: ReactNode;
 }
+/** Selaras dengan Bootstrap `md` (layar &lt; 768px = mobile). */
+const MOBILE_MAX_WIDTH = Number(process.env.NEXT_PUBLIC_MOBILE_BREAKPOINT_SIZE ?? '767');
+const ASIDE_MINIMIZE_FROM = Number(process.env.NEXT_PUBLIC_ASIDE_MINIMIZE_BREAKPOINT_SIZE ?? '992');
+
 export const ThemeContextProvider: FC<IThemeContextProviderProps> = ({ children }) => {
 	const deviceScreen = useDeviceScreen();
-	// @ts-ignore
-	const mobileDesign = deviceScreen?.width <= process.env.NEXT_PUBLIC_MOBILE_BREAKPOINT_SIZE;
+	const w = deviceScreen?.width ?? 0;
+	const mobileDesign = w <= MOBILE_MAX_WIDTH;
 
 	const [darkModeStatus, setDarkModeStatus] = useState(
 		typeof window !== 'undefined' && localStorage.getItem('facit_darkModeStatus')
@@ -41,13 +45,12 @@ export const ThemeContextProvider: FC<IThemeContextProviderProps> = ({ children 
 	const [leftMenuStatus, setLeftMenuStatus] = useState(false);
 	const [rightMenuStatus, setRightMenuStatus] = useState(false);
 
-	const [asideStatus, setAsideStatus] = useState(
-		typeof window !== 'undefined' && localStorage.getItem('facit_asideStatus')
-			? localStorage.getItem('facit_asideStatus') === 'true'
-			: // @ts-ignore
-				deviceScreen?.width >=
-					Number(process.env.NEXT_PUBLIC_ASIDE_MINIMIZE_BREAKPOINT_SIZE),
-	);
+	const [asideStatus, setAsideStatus] = useState(() => {
+		if (typeof window === 'undefined') return false;
+		const stored = localStorage.getItem('facit_asideStatus');
+		if (stored !== null) return stored === 'true';
+		return window.innerWidth >= ASIDE_MINIMIZE_FROM;
+	});
 	useEffect(() => {
 		localStorage.setItem('facit_asideStatus', asideStatus?.toString());
 	}, [asideStatus]);
@@ -55,16 +58,13 @@ export const ThemeContextProvider: FC<IThemeContextProviderProps> = ({ children 
 	const [rightPanel, setRightPanel] = useState(false);
 
 	useEffect(() => {
-		// @ts-ignore
-		if (deviceScreen?.width >= process.env.NEXT_PUBLIC_ASIDE_MINIMIZE_BREAKPOINT_SIZE) {
+		const width = deviceScreen?.width ?? 0;
+		if (width >= ASIDE_MINIMIZE_FROM) {
 			// eslint-disable-next-line react-hooks/set-state-in-effect
 			if (localStorage.getItem('facit_asideStatus') === 'true') setAsideStatus(true);
 			setLeftMenuStatus(false);
 			setRightMenuStatus(false);
 		}
-		return () => {
-			setAsideStatus(false);
-		};
 	}, [deviceScreen?.width]);
 
 	const values: IThemeContextProps = useMemo(

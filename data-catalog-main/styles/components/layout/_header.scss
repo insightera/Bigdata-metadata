@@ -180,7 +180,8 @@
 	@include backdrop-filter-blur(map-deep-get($header, mobile, blur));
 
 	position: fixed;
-	z-index: $zindex-fixed;
+	// Di atas aside (1035) agar tombol menu mobile selalu bisa diketik saat drawer terbuka
+	z-index: $zindex-aside + 10;
 	top: 0;
 	right: 0;
 	left: 0;
@@ -188,6 +189,7 @@
 	width: 100%;
 	height: map-deep-get($header, mobile, height);
 	align-items: center;
+	padding-top: env(safe-area-inset-top, 0px);
 	background-color: rgba(
 		map-deep-get($header, mobile, background-color),
 		map-deep-get($header, mobile, opacity)
@@ -203,6 +205,11 @@
 
 	@include media-breakpoint-up(map.get($aside, mobile-breakpoint)) {
 		display: none;
+	}
+
+	.container-fluid {
+		padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+		padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
 	}
 
 	& &-toggle {

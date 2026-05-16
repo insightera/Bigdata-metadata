@@ -52,42 +52,21 @@ $catalog-accent-keys: primary, secondary, success, info, warning, danger, light,
 }
 
 .footer-catalog {
+	&--compact .footer-catalog-row {
+		min-height: 2.5rem;
+	}
+
 	.footer-catalog-brand {
 		color: var(--#{$prefix}primary);
 	}
 
-	.footer-catalog-heading {
-		color: var(--#{$prefix}primary);
-		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		margin-bottom: 0.5rem;
-		text-transform: uppercase;
-	}
-
-	.footer-catalog-link {
-		color: var(--#{$prefix}body-color);
-		display: inline-block;
-		font-size: 0.8125rem;
-		padding: 0.15rem 0;
-		text-decoration: none;
-
-		&:hover {
-			color: var(--#{$prefix}primary);
-		}
-	}
-
-	.footer-catalog-links li + li {
-		margin-top: 0.125rem;
-	}
-
-	.footer-catalog-tagline {
-		max-width: 22rem;
+	.footer-catalog-copy {
+		line-height: 1.2;
 	}
 }
 
 .footer {
-	align-items: flex-start;
+	align-items: center;
 	height: auto;
-	min-height: 3rem;
+	min-height: map-get($footer, height);
 }

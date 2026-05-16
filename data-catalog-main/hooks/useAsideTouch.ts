@@ -8,11 +8,10 @@ const useAsideTouch = () => {
 	const deviceScreen = useDeviceScreen();
 
 	const mobileDesign =
-		// @ts-ignore
-		deviceScreen?.width <= Number(process.env.NEXT_PUBLIC_MOBILE_BREAKPOINT_SIZE);
+		(deviceScreen?.width ?? 0) <= Number(process.env.NEXT_PUBLIC_MOBILE_BREAKPOINT_SIZE ?? '767');
 	const hasTouchButton =
-		// @ts-ignore
-		deviceScreen?.width > Number(process.env.NEXT_PUBLIC_ASIDE_MINIMIZE_BREAKPOINT_SIZE);
+		(deviceScreen?.width ?? 0) >
+		Number(process.env.NEXT_PUBLIC_ASIDE_MINIMIZE_BREAKPOINT_SIZE ?? '992');
 
 	const asideWidthWithSpace =
 		(parseInt(String(process.env.NEXT_PUBLIC_ASIDE_WIDTH_PX), 10) +
@@ -64,7 +63,7 @@ const useAsideTouch = () => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [asideStatus]);
 
-	const asideStyle = hasTouchButton ? { left } : { left: mobileDesign ? null : '0rem' };
+	const asideStyle = hasTouchButton ? { left } : mobileDesign ? {} : { left: '0rem' };
 
 	return { asideStyle, touchStatus, hasTouchButton, asideWidthWithSpace, x };
 };

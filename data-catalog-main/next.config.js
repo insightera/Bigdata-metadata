@@ -20,11 +20,17 @@ const nextConfig = withInterceptStdout(
 			disableStaticImages: true
 		},
 		reactStrictMode: true,
-		// Akses dev dari IP/host eksternal (mis. VM 103.174.114.177)
+		// Host yang boleh memuat aset dev /_next/* (HMR, dll.) dari luar localhost — tanpa ini Next 16 memblokir.
 		allowedDevOrigins: [
+			'catalog.insightera.cloud',
+			'www.catalog.insightera.cloud',
 			'103.174.114.177',
 			'localhost',
 			'127.0.0.1',
+			...(process.env.NEXT_ALLOWED_DEV_ORIGINS || '')
+				.split(',')
+				.map((h) => h.trim())
+				.filter(Boolean),
 		],
 		i18n,
 		// webpack(config, options) {
@@ -38,6 +44,9 @@ const nextConfig = withInterceptStdout(
 		},
 	env: {
 		NEXT_PUBLIC_ATLAS_URL: process.env.NEXT_PUBLIC_ATLAS_URL || 'http://localhost:21000',
+		NEXT_PUBLIC_MOBILE_BREAKPOINT_SIZE: process.env.NEXT_PUBLIC_MOBILE_BREAKPOINT_SIZE || '767',
+		NEXT_PUBLIC_ASIDE_MINIMIZE_BREAKPOINT_SIZE:
+			process.env.NEXT_PUBLIC_ASIDE_MINIMIZE_BREAKPOINT_SIZE || '992',
 	},
 	webpack(config, options) {
 		return config;
