@@ -19,6 +19,16 @@ volumes:
   solr-data:
   catalog-node-modules:
 
+# Airflow: `AIRFLOW__WEBSERVER__SECRET_KEY` harus identik di webserver, scheduler, dan init.
+# Tanpa ini, UI memunculkan peringatan secret_key dan log task dari scheduler (port 8793) gagal (403).
+x-airflow-common-env: &airflow-common-env
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin123@postgres:5432/airflow_db
+  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
+  AIRFLOW__WEBSERVER__SECRET_KEY: "lakehouse_secret_key_2024"
+  PYTHONPATH: "/opt/airflow/scripts"
+
 services:
 
   # ─────────────────────────────────────────────
@@ -420,11 +430,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin123@postgres:5432/airflow_db
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
-      PYTHONPATH: "/opt/airflow/scripts"
+      <<: *airflow-common-env
     volumes:
       - ./scripts/dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts:ro
@@ -448,13 +454,8 @@ services:
         condition: service_completed_successfully
     command: webserver
     environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin123@postgres:5432/airflow_db
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
-      AIRFLOW__WEBSERVER__SECRET_KEY: "lakehouse_secret_key_2024"
+      <<: *airflow-common-env
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
-      PYTHONPATH: "/opt/airflow/scripts"
     volumes:
       - ./scripts/dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts:ro
@@ -478,11 +479,7 @@ services:
         condition: service_healthy
     command: scheduler
     environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin123@postgres:5432/airflow_db
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
-      PYTHONPATH: "/opt/airflow/scripts"
+      <<: *airflow-common-env
     volumes:
       - ./scripts/dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts:ro
@@ -525,15 +522,18 @@ services:
       - "${LHMETA_JUPYTER_PORT:-18888}:8888"
 
   # ── Data Catalog Portal (Next.js) ──
+  # Dev: default `yarn dev` (ada WebSocket /_next/webpack-hmr — tidak cocok di balik reverse proxy produksi).
+  # Prod: set LHMETA_CATALOG_PRODUCTION=1 di .env → `yarn build` + `next start` (tanpa HMR).
+  # NEXT_PUBLIC_* wajib sudah benar saat build (ubah URL Atlas → rebuild image/container).
   data-catalog:
     container_name: lhmeta-data-catalog
     image: node:20-alpine
     working_dir: /app
-    # Proyek memakai yarn@4.12.0 (packageManager); image Node bawaan Yarn 1.x — aktifkan Corepack dulu.
-    command: sh -c "corepack enable && rm -f .pnp.cjs .pnp.loader.mjs && yarn install && yarn dev"
+    command: sh -c "corepack enable && rm -f .pnp.cjs .pnp.loader.mjs && yarn install && if [ \"$$LHMETA_CATALOG_PRODUCTION\" = \"1\" ]; then export NODE_ENV=production && yarn build && exec yarn start; else exec yarn dev; fi"
     environment:
       - COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-      - NEXT_PUBLIC_ATLAS_URL=http://atlas:21000
+      - LHMETA_CATALOG_PRODUCTION=${LHMETA_CATALOG_PRODUCTION:-0}
+      - NEXT_PUBLIC_ATLAS_URL=${LHMETA_CATALOG_ATLAS_URL:-http://atlas:21000}
       - ATLAS_USER=admin
       - ATLAS_PASS=admin
     volumes:
