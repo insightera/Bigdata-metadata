@@ -161,16 +161,17 @@ services:
     ports:
       - "${LHMETA_HBASE_MASTER_PORT:-19010}:16010"
     healthcheck:
-      # Master-only checks miss a dead RegionServer — Atlas needs RS RPC (16020)
+      # Proses saja belum cukup: saat Master masih "initializing", Atlas dapat PleaseHoldException.
+      # Tunggu sampai shell melihat active master (RPC siap). Image JRE tidak punya jps — pakai pgrep.
       test:
         [
           "CMD-SHELL",
-          "(command -v jps >/dev/null 2>&1 && jps 2>/dev/null | grep -q HMaster && jps 2>/dev/null | grep -q HRegionServer) || (pgrep -f org.apache.hadoop.hbase.master >/dev/null && pgrep -f org.apache.hadoop.hbase.regionserver >/dev/null)",
+          "pgrep -f org.apache.hadoop.hbase.master >/dev/null && pgrep -f org.apache.hadoop.hbase.regionserver >/dev/null && echo \"status 'simple'\" | hbase shell 2>/dev/null | grep -q 'active master'",
         ]
-      interval: 15s
-      timeout: 10s
-      retries: 25
-      start_period: 120s
+      interval: 20s
+      timeout: 55s
+      retries: 20
+      start_period: 180s
 
   # ─────────────────────────────────────────────
   # POSTGRESQL (backend for Hive Metastore & Airflow)
