@@ -18,6 +18,8 @@ volumes:
   kafka-data:
   solr-data:
   catalog-node-modules:
+  # HBase embedded (HariSekhon): named volume agar mudah hapus stale hbck lock / reset dev tanpa cari anonymous volume
+  hbase-data:
 
 # Airflow: `AIRFLOW__WEBSERVER__SECRET_KEY` harus identik di webserver, scheduler, dan init.
 # Tanpa ini, UI memunculkan peringatan secret_key dan log task dari scheduler (port 8793) gagal (403).
@@ -152,6 +154,8 @@ services:
       # Template is ro; wrapper copies to /hbase/conf so HariSekhon sed -i works without mutating the host file
       - ./hbase-conf/hbase-site.xml:/opt/lakehouse/hbase-site-template.xml:ro
       - ./hbase-conf/hbase-docker-entrypoint-wrap.sh:/opt/lakehouse/hbase-docker-entrypoint-wrap.sh:ro
+      # Named volume: reset hbck lock / data rusak → `docker compose stop hbase` lalu `docker run --rm -v <project>_hbase-data:/hbase-data alpine rm -rf /hbase-data/.tmp`
+      - hbase-data:/hbase-data
     expose:
       - "2181"
       - "16000"

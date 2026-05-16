@@ -22,4 +22,13 @@
     <name>hbase.security.authentication</name>
     <value>simple</value>
   </property>
+  <!-- Saat HBase baru naik: PleaseHoldException, /hbase/master belum ada, meta belum di ZK — perpanjang retry klien -->
+  <property>
+    <name>hbase.client.retries.number</name>
+    <value>45</value>
+  </property>
+  <property>
+    <name>hbase.client.pause</name>
+    <value>250</value>
+  </property>
 </configuration>
