@@ -27,6 +27,8 @@ import logging
 from datetime import date, datetime
 
 from pyspark.sql import DataFrame, SparkSession
+
+from spark.spark_python import apply_pyspark_python_configs
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
@@ -106,7 +108,7 @@ def get_spark_session():
             "com.amazonaws:aws-java-sdk-bundle:1.12.262",
         )
 
-    return builder.getOrCreate()
+    return apply_pyspark_python_configs(builder).getOrCreate()
 
 
 # ---------------------------------------------------------------------------

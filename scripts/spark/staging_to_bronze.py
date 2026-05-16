@@ -15,6 +15,8 @@ import logging
 from datetime import datetime
 
 from pyspark.sql import SparkSession
+
+from spark.spark_python import apply_pyspark_python_configs
 from pyspark.sql import functions as F
 
 logger = logging.getLogger("staging_to_bronze")
@@ -107,7 +109,7 @@ def get_spark_session():
             "com.amazonaws:aws-java-sdk-bundle:1.12.262",
         )
 
-    return builder.getOrCreate()
+    return apply_pyspark_python_configs(builder).getOrCreate()
 
 
 def profile_dataframe(df, table_name: str) -> dict:

@@ -1,4 +1,5 @@
-FROM apache/airflow:2.9.1
+# Must match Spark worker image (apache/spark:*-python3-ubuntu → Python 3.10). Default Airflow image uses 3.12 → PYTHON_VERSION_MISMATCH.
+FROM apache/airflow:2.9.1-python3.10
 
 USER root
 RUN apt-get update \
