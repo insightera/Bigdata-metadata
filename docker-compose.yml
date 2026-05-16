@@ -147,6 +147,9 @@ services:
     container_name: lhmeta-hbase
     hostname: hbase
     networks: [lakehouse-net]
+    volumes:
+      # Same shape as HariSekhon; entrypoint sed still rewrites zookeeper:2181 for embedded ZK
+      - ./hbase-conf/hbase-site.xml:/hbase/conf/hbase-site.xml:ro
     expose:
       - "2181"
       - "16000"
@@ -156,7 +159,12 @@ services:
     ports:
       - "${LHMETA_HBASE_MASTER_PORT:-19010}:16010"
     healthcheck:
-      test: ["CMD-SHELL", "(command -v jps >/dev/null 2>&1 && jps | grep -q HMaster) || pgrep -f org.apache.hadoop.hbase.master >/dev/null"]
+      # Master-only checks miss a dead RegionServer — Atlas needs RS RPC (16020)
+      test:
+        [
+          "CMD-SHELL",
+          "(command -v jps >/dev/null 2>&1 && jps 2>/dev/null | grep -q HMaster && jps 2>/dev/null | grep -q HRegionServer) || (pgrep -f org.apache.hadoop.hbase.master >/dev/null && pgrep -f org.apache.hadoop.hbase.regionserver >/dev/null)",
+        ]
       interval: 15s
       timeout: 10s
       retries: 25
