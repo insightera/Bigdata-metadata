@@ -333,13 +333,18 @@ services:
       # mount ini wajib agar JanusGraph/HBase client menghubungi service `hbase` di compose.
       - ./atlas-conf/hbase-site.xml:/apache-atlas/hbase/conf/hbase-site.xml:ro
     ports:
-      - "${LHMETA_ATLAS_PORT:-22100}:21000"  # Atlas Web UI (host)
+      - "${LHMETA_ATLAS_PORT:-22100}:21000"  # UI/API: di HOST pakai port 22100 (bukan 21000)
+    # Image sburn/apache-atlas tidak menyertakan curl di PATH — healthcheck memakai wget atau bash /dev/tcp.
     healthcheck:
-      test: ["CMD", "curl", "-f", "-u", "admin:admin", "http://localhost:21000/api/atlas/v2/types/typedefs"]
+      test:
+        [
+          "CMD-SHELL",
+          "bash -c '(command -v wget>/dev/null&&wget -qO/dev/null -T 14 --user=admin --password=admin http://127.0.0.1:21000/api/atlas/v2/types/typedefs)||(command -v curl>/dev/null&&curl -sf -u admin:admin http://127.0.0.1:21000/api/atlas/v2/types/typedefs)||exec 3<>/dev/tcp/127.0.0.1/21000'",
+        ]
       interval: 30s
-      timeout: 15s
-      retries: 20
-      start_period: 120s
+      timeout: 18s
+      retries: 25
+      start_period: 180s
 
   # ─────────────────────────────────────────────
   # SPARK MASTER (image resmi apache/spark — bitnami/spark:3.5.1 tidak lagi di Hub)
