@@ -1,9 +1,8 @@
 <?xml version="1.0"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 <!--
-  HariSekhon/hbase entrypoint replaces zookeeper:2181 -> localhost:2181 on startup.
-  Hostname entries help RegionServer/Master advertise the Docker service name so other
-  containers (e.g. Atlas) can reach RPC (default 16020).
+  HariSekhon entrypoint rewrites zookeeper:2181 -> localhost:2181 for embedded ZK (see hbase-docker-entrypoint-wrap.sh).
+  Hostname entries help Master/RegionServer advertise the service name `hbase` for RPC from other containers.
 -->
 <configuration>
   <property>

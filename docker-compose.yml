@@ -147,9 +147,11 @@ services:
     container_name: lhmeta-hbase
     hostname: hbase
     networks: [lakehouse-net]
+    entrypoint: ["/bin/bash", "/opt/lakehouse/hbase-docker-entrypoint-wrap.sh"]
     volumes:
-      # Same shape as HariSekhon; entrypoint sed still rewrites zookeeper:2181 for embedded ZK
-      - ./hbase-conf/hbase-site.xml:/hbase/conf/hbase-site.xml:ro
+      # Template is ro; wrapper copies to /hbase/conf so HariSekhon sed -i works without mutating the host file
+      - ./hbase-conf/hbase-site.xml:/opt/lakehouse/hbase-site-template.xml:ro
+      - ./hbase-conf/hbase-docker-entrypoint-wrap.sh:/opt/lakehouse/hbase-docker-entrypoint-wrap.sh:ro
     expose:
       - "2181"
       - "16000"
