@@ -19,7 +19,7 @@ from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import IntegerType, FloatType
 
-from spark.spark_python import apply_pyspark_python_configs
+from spark.spark_python import apply_cluster_resource_configs, apply_pyspark_python_configs
 
 logger = logging.getLogger("silver_to_gold")
 
@@ -98,8 +98,6 @@ def get_spark_session():
             "spark.hadoop.fs.s3a.aws.credentials.provider",
             "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
         )
-        .config("spark.driver.memory", "1g")
-        .config("spark.executor.memory", "1g")
     )
 
     local_jars = _resolve_jars()
@@ -113,6 +111,7 @@ def get_spark_session():
             "com.amazonaws:aws-java-sdk-bundle:1.12.262",
         )
 
+    builder = apply_cluster_resource_configs(builder, app_name="silver_to_gold")
     return apply_pyspark_python_configs(builder).getOrCreate()
 
 

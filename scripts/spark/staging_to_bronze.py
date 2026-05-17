@@ -16,7 +16,7 @@ from datetime import datetime
 
 from pyspark.sql import SparkSession
 
-from spark.spark_python import apply_pyspark_python_configs
+from spark.spark_python import apply_cluster_resource_configs, apply_pyspark_python_configs
 from pyspark.sql import functions as F
 
 logger = logging.getLogger("staging_to_bronze")
@@ -93,9 +93,6 @@ def get_spark_session():
             "spark.hadoop.fs.s3a.aws.credentials.provider",
             "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
         )
-        .config("spark.driver.memory", "1g")
-        .config("spark.executor.memory", "1g")
-        .config("spark.executor.cores", "1")
     )
 
     local_jars = _resolve_jars()
@@ -109,6 +106,7 @@ def get_spark_session():
             "com.amazonaws:aws-java-sdk-bundle:1.12.262",
         )
 
+    builder = apply_cluster_resource_configs(builder, app_name="staging_to_bronze")
     return apply_pyspark_python_configs(builder).getOrCreate()
 
 
@@ -167,7 +165,7 @@ def process_table(spark, table_name: str) -> dict | None:
         df = (
             spark.read
             .option("header", "true")
-            .option("inferSchema", "true")
+            .option("inferSchema", "false")
             .csv(csv_path)
         )
         row_count = df.count()
