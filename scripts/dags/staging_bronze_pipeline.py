@@ -213,7 +213,7 @@ with DAG(
     spark_etl = PythonOperator(
         task_id="staging_to_bronze",
         python_callable=run_spark_staging_to_bronze,
-        execution_timeout=timedelta(minutes=30),
+        execution_timeout=timedelta(minutes=60),
     )
 
     atlas_register = PythonOperator(

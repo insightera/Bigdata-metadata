@@ -33,6 +33,10 @@ x-airflow-common-env: &airflow-common-env
   # PySpark driver (Airflow) + executors (Spark workers) must share the same Python minor version (3.10)
   PYSPARK_PYTHON: python3
   PYSPARK_DRIVER_PYTHON: python3
+  # Spark jobs block the task process; default zombie threshold (~300s) kills the task with SIGTERM mid-run
+  AIRFLOW__SCHEDULER__ZOMBIE_TASK_THRESHOLD: "1800"
+  AIRFLOW__SCHEDULER__TASK_QUEUED_TIMEOUT: "600"
+  SPARK_MASTER: "spark://spark-master:7077"
 
 services:
 

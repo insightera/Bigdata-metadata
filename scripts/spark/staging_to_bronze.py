@@ -213,7 +213,10 @@ def run_staging_to_bronze() -> dict:
         )
         return results
     finally:
-        spark.stop()
+        try:
+            spark.stop()
+        except Exception as exc:
+            logger.warning("spark.stop() skipped: %s", exc)
 
 
 if __name__ == "__main__":
