@@ -434,6 +434,7 @@ def profile_silver(df: DataFrame, table_name: str, source_quality: dict,
         "columns": columns,
         "quality": {
             "source_score": source_quality.get("quality_score", 0),
+            "overall_score": source_quality.get("quality_score", 0),
             "source_status": source_quality.get("status", "UNKNOWN"),
             "silver_completeness": round(avg_completeness, 2),
         },

@@ -95,6 +95,20 @@ export const pipelineMenu = {
 			},
 		},
 	},
+	umt: {
+		id: 'umt',
+		text: 'Unified Metadata (UMT)',
+		path: 'umt',
+		icon: 'TableChart',
+		subMenu: null,
+	},
+	metadataQuality: {
+		id: 'metadataQuality',
+		text: 'Metadata Quality (§4.1.6)',
+		path: 'metadata-quality',
+		icon: 'Assessment',
+		subMenu: null,
+	},
 };
 
 export const pageLayoutTypesPagesMenu = {

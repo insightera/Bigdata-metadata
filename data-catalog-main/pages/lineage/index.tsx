@@ -18,21 +18,36 @@ import Icon from '../../components/icon/Icon';
 import Badge from '../../components/bootstrap/Badge';
 import Button from '../../components/bootstrap/Button';
 import Spinner from '../../components/bootstrap/Spinner';
-import { layerFromQualifiedName, layerColor } from '../../helpers/atlasApi';
+import MedallionLineageFlow from '../../components/lineage/MedallionLineageFlow';
+import { layerColor } from '../../helpers/atlasApi';
+import {
+	MEDALLION_DATA_LAYERS,
+	MEDALLION_PIPELINE_EDGES,
+	parseLineageEntity,
+	type ParsedLineageNode,
+} from '../../helpers/lineageDisplay';
 
 const LineageIndexPage: NextPage = () => {
 	const router = useRouter();
-	const [datasets, setDatasets] = useState<any[]>([]);
+	const [nodes, setNodes] = useState<ParsedLineageNode[]>([]);
 	const [loading, setLoading] = useState(true);
 
 	const fetchDatasets = useCallback(async () => {
 		setLoading(true);
 		try {
-			const res = await fetch('/api/atlas/search?typeName=lakehouse_dataset&limit=100');
-			const data = await res.json();
-			setDatasets(data.entities || []);
+			const [dsRes, procRes] = await Promise.all([
+				fetch('/api/atlas/search?typeName=lakehouse_dataset&limit=100'),
+				fetch('/api/atlas/search?typeName=lakehouse_etl_process&limit=100'),
+			]);
+			const dsData = await dsRes.json();
+			const procData = await procRes.json();
+			const parsed = [
+				...(dsData.entities || []).map((e: any) => parseLineageEntity(e.guid, e)),
+				...(procData.entities || []).map((e: any) => parseLineageEntity(e.guid, e)),
+			];
+			setNodes(parsed);
 		} catch {
-			setDatasets([]);
+			setNodes([]);
 		} finally {
 			setLoading(false);
 		}
@@ -42,14 +57,10 @@ const LineageIndexPage: NextPage = () => {
 		fetchDatasets();
 	}, [fetchDatasets]);
 
-	const grouped: Record<string, any[]> = {};
-	datasets.forEach((e) => {
-		const layer = layerFromQualifiedName(e.attributes?.qualifiedName || '');
-		if (!grouped[layer]) grouped[layer] = [];
-		grouped[layer].push(e);
+	const grouped: Record<string, ParsedLineageNode[]> = {};
+	MEDALLION_DATA_LAYERS.forEach((l) => {
+		grouped[l] = nodes.filter((n) => !n.isProcess && n.layer === l);
 	});
-
-	const layerOrder = ['staging', 'bronze', 'silver', 'gold'];
 
 	return (
 		<PageWrapper>
@@ -61,110 +72,47 @@ const LineageIndexPage: NextPage = () => {
 					<Icon icon='AccountTree' size='2x' color='primary' />
 					<span className='h4 mb-0 ms-2 fw-bold'>Data Lineage</span>
 					<Badge color='primary' isLight className='ms-3'>
-						Select an entity to explore lineage
+						Sesuai diagram pipeline + metadata
 					</Badge>
 				</SubHeaderLeft>
 			</SubHeader>
 			<Page>
-				{/* Full pipeline lineage diagram */}
 				<div className='row mb-4'>
 					<div className='col-12'>
 						<Card shadow='sm'>
 							<CardHeader>
 								<CardLabel icon='AccountTree' iconColor='primary'>
-									<CardTitle>End-to-End Pipeline Lineage</CardTitle>
+									<CardTitle>Alur Medallion &amp; ETL</CardTitle>
 									<CardSubTitle>
-										Staging → Bronze → Silver → Gold
+										Staging → Bronze → Silver → Gold — setiap panah = satu pipeline
+										({MEDALLION_PIPELINE_EDGES.map((e) => e.pipelineName).join(', ')})
 									</CardSubTitle>
 								</CardLabel>
 							</CardHeader>
 							<CardBody>
-								<div className='p-3 bg-l10-primary rounded-3'>
-									<div className='d-flex align-items-start justify-content-between flex-wrap'>
-										{layerOrder.map((layer, i) => {
-											const items = grouped[layer] || [];
-											const lColor = layerColor(layer);
-											return (
-												<React.Fragment key={layer}>
-													{i > 0 && (
-														<div className='d-flex align-items-center py-4'>
-															<Icon
-																icon='ArrowForward'
-																size='2x'
-																color='primary'
-															/>
-															<div className='mx-1'>
-																<small className='text-muted'>
-																	ETL
-																</small>
-															</div>
-															<Icon
-																icon='ArrowForward'
-																size='2x'
-																color='primary'
-															/>
-														</div>
-													)}
-													<div
-														className='text-center p-3 rounded-3'
-														style={{
-															minWidth: 160,
-															backgroundColor: `var(--bs-${lColor}-bg-subtle, var(--bs-light))`,
-															border: `2px solid var(--bs-${lColor})`,
-														}}>
-														<Badge
-															color={lColor as any}
-															className='mb-2 px-3'>
-															{layer.toUpperCase()}
-														</Badge>
-														<div className='fw-bold h4 mb-1'>
-															{items.length}
-														</div>
-														<small className='text-muted'>
-															datasets
-														</small>
-														<div className='mt-2'>
-															{items.slice(0, 3).map((item) => (
-																<div key={item.guid}>
-																	<Button
-																		color={lColor as any}
-																		isLight
-																		size='sm'
-																		className='mb-1 w-100 text-truncate'
-																		onClick={() =>
-																			router.push(
-																				`/lineage/${item.guid}`,
-																			)
-																		}>
-																		{item.attributes?.name}
-																	</Button>
-																</div>
-															))}
-															{items.length > 3 && (
-																<small className='text-muted'>
-																	+{items.length - 3} more
-																</small>
-															)}
-														</div>
-													</div>
-												</React.Fragment>
-											);
-										})}
+								{loading ? (
+									<div className='text-center py-4'>
+										<Spinner color='primary' />
 									</div>
-								</div>
+								) : (
+									<MedallionLineageFlow
+										nodes={nodes}
+										showMetadataTypes
+										maxDatasetsPerLayer={3}
+									/>
+								)}
 							</CardBody>
 						</Card>
 					</div>
 				</div>
 
-				{/* Entity list for lineage */}
 				{loading ? (
 					<div className='text-center py-5'>
 						<Spinner color='primary' size='3rem' />
 					</div>
 				) : (
 					<div className='row'>
-						{layerOrder.map((layer) => {
+						{MEDALLION_DATA_LAYERS.map((layer) => {
 							const items = grouped[layer] || [];
 							if (items.length === 0) return null;
 							return (
@@ -183,8 +131,7 @@ const LineageIndexPage: NextPage = () => {
 												}
 												iconColor={layerColor(layer) as any}>
 												<CardTitle>
-													{layer.charAt(0).toUpperCase() +
-														layer.slice(1)}
+													{layer.charAt(0).toUpperCase() + layer.slice(1)}
 												</CardTitle>
 											</CardLabel>
 										</CardHeader>
@@ -200,7 +147,7 @@ const LineageIndexPage: NextPage = () => {
 													onClick={() =>
 														router.push(`/lineage/${item.guid}`)
 													}>
-													{item.attributes?.name}
+													{item.displayName}
 												</Button>
 											))}
 										</CardBody>

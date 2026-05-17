@@ -489,10 +489,62 @@ def build_fact_rekap_iku(spark: SparkSession, all_facts: dict) -> DataFrame:
 # Profiling
 # ───────────────────────────────────────────────────────────────────────────
 
+IKU_VALUE_COLUMNS = {
+    "fact_iku1_lulusan": "persen_terserap",
+    "fact_iku2_mbkm": "persen_iku2",
+    "fact_iku3_dosen_tridarma": "persen_iku3",
+    "fact_iku4_kualifikasi_dosen": "persen_iku4",
+    "fact_iku5_penelitian_pkm": "rasio_per_dosen",
+    "fact_iku6_kerjasama_prodi": "persen_iku6",
+    "fact_iku7_metode_pembelajaran": "persen_iku7",
+    "fact_iku8_akreditasi_internasional": "persen_iku8",
+}
+
+
+def _sample_kpi_from_fact(df: DataFrame, table_name: str) -> dict:
+    """Rata-rata institusi untuk ditampilkan di KPI Dashboard / Atlas profiling."""
+    value_col = IKU_VALUE_COLUMNS.get(table_name)
+    if not value_col or value_col not in df.columns:
+        return {}
+
+    agg_exprs = [F.avg(value_col).alias("nilai_capaian")]
+    if "target_iku" in df.columns:
+        agg_exprs.append(F.avg("target_iku").alias("nilai_target"))
+    if "capaian_iku" in df.columns:
+        agg_exprs.append(F.avg("capaian_iku").alias("persen_capaian_terhadap_target"))
+
+    row = df.agg(*agg_exprs).collect()[0]
+    nilai = float(row["nilai_capaian"]) if row["nilai_capaian"] is not None else None
+    target = None
+    if "target_iku" in df.columns and row["nilai_target"] is not None:
+        target = float(row["nilai_target"])
+    persen_ct = None
+    if "capaian_iku" in df.columns and row["persen_capaian_terhadap_target"] is not None:
+        persen_ct = float(row["persen_capaian_terhadap_target"])
+
+    status = ""
+    if nilai is not None and target is not None:
+        if nilai >= target:
+            status = "Tercapai"
+        elif nilai >= target * 0.8:
+            status = "On Track"
+        else:
+            status = "Tidak Tercapai"
+
+    satuan = "Rasio" if table_name == "fact_iku5_penelitian_pkm" else "%"
+    return {
+        "nilai_capaian": round(nilai, 2) if nilai is not None else None,
+        "nilai_target": round(target, 2) if target is not None else None,
+        "persen_capaian_terhadap_target": round(persen_ct, 2) if persen_ct is not None else None,
+        "status_capaian": status,
+        "satuan": satuan,
+    }
+
+
 def profile_gold_table(df: DataFrame, table_name: str, table_type: str,
                        sources: list[str]) -> dict:
     row_count = df.count()
-    return {
+    profile = {
         "table_name": table_name,
         "table_type": table_type,
         "row_count": row_count,
@@ -501,6 +553,9 @@ def profile_gold_table(df: DataFrame, table_name: str, table_type: str,
         "sources": sources,
         "profiled_at": datetime.utcnow().isoformat() + "Z",
     }
+    if table_type == "fact" and table_name in IKU_VALUE_COLUMNS:
+        profile["sample_kpi"] = _sample_kpi_from_fact(df, table_name)
+    return profile
 
 
 # ───────────────────────────────────────────────────────────────────────────

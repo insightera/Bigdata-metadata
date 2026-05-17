@@ -276,6 +276,7 @@ def register_silver_entity(table_name: str, profiling: dict) -> dict | None:
                 }),
                 "pii_columns": json.dumps(comp.get("pii_columns", [])),
                 "ingested_at": datetime.utcnow().isoformat() + "Z",
+                "enriched_at": datetime.utcnow().isoformat() + "Z",
             },
             "classifications": classifications,
         }

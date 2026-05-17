@@ -18,15 +18,14 @@ import Icon from '../../components/icon/Icon';
 import Badge from '../../components/bootstrap/Badge';
 import Button from '../../components/bootstrap/Button';
 import Spinner from '../../components/bootstrap/Spinner';
-import { layerFromQualifiedName, layerColor, classificationColor } from '../../helpers/atlasApi';
-
-interface LineageNode {
-	guid: string;
-	name: string;
-	typeName: string;
-	qualifiedName: string;
-	layer: string;
-}
+import MedallionLineageFlow from '../../components/lineage/MedallionLineageFlow';
+import { layerColor } from '../../helpers/atlasApi';
+import {
+	parseLineageEntity,
+	resolveDisplayName,
+	resolveEntityLayer,
+	type ParsedLineageNode,
+} from '../../helpers/lineageDisplay';
 
 interface LineageEdge {
 	from: string;
@@ -38,7 +37,7 @@ const LineageDetailPage: NextPage = () => {
 	const { guid } = router.query;
 
 	const [baseEntity, setBaseEntity] = useState<any>(null);
-	const [nodes, setNodes] = useState<LineageNode[]>([]);
+	const [nodes, setNodes] = useState<ParsedLineageNode[]>([]);
 	const [edges, setEdges] = useState<LineageEdge[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
@@ -57,14 +56,8 @@ const LineageDetailPage: NextPage = () => {
 			setBaseEntity(entityData.entity);
 
 			const nodeMap = lineageData.guidEntityMap || {};
-			const parsedNodes: LineageNode[] = Object.entries(nodeMap).map(
-				([g, e]: [string, any]) => ({
-					guid: g,
-					name: e.attributes?.name || e.attributes?.qualifiedName || g,
-					typeName: e.typeName,
-					qualifiedName: e.attributes?.qualifiedName || '',
-					layer: layerFromQualifiedName(e.attributes?.qualifiedName || ''),
-				}),
+			const parsedNodes: ParsedLineageNode[] = Object.entries(nodeMap).map(
+				([g, e]: [string, any]) => parseLineageEntity(g, e),
 			);
 
 			const parsedEdges: LineageEdge[] = (lineageData.relations || []).map(
@@ -100,25 +93,19 @@ const LineageDetailPage: NextPage = () => {
 		);
 	}
 
-	const baseName = baseEntity?.attributes?.name || guid;
-	const baseQn = baseEntity?.attributes?.qualifiedName || '';
-	const baseLayer = layerFromQualifiedName(baseQn);
+	const baseAttrs = baseEntity?.attributes || {};
+	const baseName = resolveDisplayName(
+		baseAttrs.name,
+		baseEntity?.typeName || '',
+		baseAttrs,
+	);
+	const baseLayer = resolveEntityLayer(
+		baseAttrs.qualifiedName || '',
+		baseEntity?.typeName || '',
+		baseAttrs,
+	);
 
-	const inputNodes = new Set<string>();
-	const outputNodes = new Set<string>();
-	edges.forEach((e) => {
-		if (e.to === guid) inputNodes.add(e.from);
-		if (e.from === guid) outputNodes.add(e.to);
-	});
-
-	const layerGroups: Record<string, LineageNode[]> = {};
-	nodes.forEach((n) => {
-		const key = n.typeName === 'lakehouse_etl_process' ? 'process' : n.layer;
-		if (!layerGroups[key]) layerGroups[key] = [];
-		layerGroups[key].push(n);
-	});
-
-	const displayOrder = ['staging', 'bronze', 'process', 'silver', 'gold'];
+	const nodeByGuid = new Map(nodes.map((n) => [n.guid, n]));
 
 	return (
 		<PageWrapper>
@@ -136,17 +123,21 @@ const LineageDetailPage: NextPage = () => {
 					<Icon
 						icon='AccountTree'
 						size='2x'
-						color={layerColor(baseLayer) as any}
+						color={layerColor(baseLayer.startsWith('etl') ? 'dark' : baseLayer) as any}
 						className='ms-3'
 					/>
 					<span className='h4 mb-0 ms-2 fw-bold'>Lineage: {baseName}</span>
-					<Badge color={layerColor(baseLayer) as any} className='ms-2'>
-						{baseLayer.toUpperCase()}
+					<Badge
+						color={
+							layerColor(baseLayer.startsWith('etl') ? 'dark' : baseLayer) as any
+						}
+						className='ms-2'>
+						{nodes.find((n) => n.guid === guid)?.layerLabel || baseLayer}
 					</Badge>
 				</SubHeaderLeft>
 				<SubHeaderRight>
 					<Badge color='primary' isLight className='px-3 py-2'>
-						{nodes.length} entities · {edges.length} relations
+						{nodes.length} entitas · {edges.length} relasi
 					</Badge>
 				</SubHeaderRight>
 			</SubHeader>
@@ -161,128 +152,31 @@ const LineageDetailPage: NextPage = () => {
 					</Card>
 				)}
 
-				{/* Visual lineage flow */}
 				<Card shadow='sm' className='mb-4'>
 					<CardHeader>
 						<CardLabel icon='AccountTree' iconColor='primary'>
-							<CardTitle>Lineage Graph</CardTitle>
+							<CardTitle>Lineage — alur Medallion</CardTitle>
 							<CardSubTitle>
-								{nodes.length} entities, {edges.length} relationships
+								ETL diposisikan di antara layer (staging_to_bronze, bronze_to_silver,
+								silver_to_gold), bukan digabung satu kolom
 							</CardSubTitle>
 						</CardLabel>
 					</CardHeader>
 					<CardBody>
-						<div className='d-flex align-items-start justify-content-center flex-wrap gap-3 p-3'>
-							{displayOrder.map((layerKey) => {
-								const layerNodes = layerGroups[layerKey] || [];
-								if (layerNodes.length === 0) return null;
-
-								const isProcess = layerKey === 'process';
-								const lColor = isProcess
-									? 'dark'
-									: layerColor(layerKey);
-
-								return (
-									<React.Fragment key={layerKey}>
-										<div
-											className='text-center p-3 rounded-3'
-											style={{
-												minWidth: 180,
-												backgroundColor: isProcess
-													? 'var(--bs-gray-100)'
-													: `var(--bs-${lColor}-bg-subtle, var(--bs-light))`,
-												border: `2px solid var(--bs-${lColor})`,
-											}}>
-											<Badge
-												color={lColor as any}
-												className='mb-3 px-3'>
-												{isProcess
-													? 'ETL PROCESS'
-													: layerKey.toUpperCase()}
-											</Badge>
-											{layerNodes.map((node) => {
-												const isBase = node.guid === guid;
-												const isInput = inputNodes.has(node.guid);
-												const isOutput = outputNodes.has(node.guid);
-												return (
-													<div
-														key={node.guid}
-														className={`p-2 mb-2 rounded-2 border ${
-															isBase
-																? 'border-primary bg-l25-primary'
-																: isInput
-																	? 'border-primary bg-l10-primary'
-																	: isOutput
-																		? 'border-primary bg-l10-primary'
-																		: 'bg-white'
-														}`}>
-														<div className='d-flex align-items-center'>
-															<Icon
-																icon={
-																	isProcess
-																		? 'Transform'
-																		: ('TableChart' as any)
-																}
-																size='sm'
-																color={lColor as any}
-																className='me-1'
-															/>
-															<small
-																className='fw-bold text-truncate'
-																style={{
-																	maxWidth: 140,
-																}}>
-																{node.name}
-															</small>
-														</div>
-														{isBase && (
-															<Badge
-																color='primary'
-																className='mt-1'>
-																CURRENT
-															</Badge>
-														)}
-														{!isProcess && (
-															<div className='mt-1'>
-																<Button
-																	color={lColor as any}
-																	isLight
-																	size='sm'
-																	onClick={() =>
-																		router.push(
-																			`/lineage/${node.guid}`,
-																		)
-																	}>
-																	Explore
-																</Button>
-															</div>
-														)}
-													</div>
-												);
-											})}
-										</div>
-										{layerKey !== 'gold' && (
-											<div className='d-flex align-items-center'>
-												<Icon
-													icon='ArrowForward'
-													size='2x'
-													color='primary'
-												/>
-											</div>
-										)}
-									</React.Fragment>
-								);
-							})}
-						</div>
+						<MedallionLineageFlow
+							nodes={nodes}
+							highlightGuid={guid as string}
+							showMetadataTypes
+							maxDatasetsPerLayer={8}
+						/>
 					</CardBody>
 				</Card>
 
-				{/* Relations table */}
 				{edges.length > 0 && (
 					<Card shadow='sm'>
 						<CardHeader>
 							<CardLabel icon='Link' iconColor='info'>
-								<CardTitle>Lineage Relations</CardTitle>
+								<CardTitle>Relasi lineage (Atlas)</CardTitle>
 							</CardLabel>
 						</CardHeader>
 						<CardBody>
@@ -290,52 +184,51 @@ const LineageDetailPage: NextPage = () => {
 								<table className='table table-modern'>
 									<thead>
 										<tr>
-											<th>From</th>
+											<th>Dari</th>
 											<th />
-											<th>To</th>
+											<th>Ke</th>
 										</tr>
 									</thead>
 									<tbody>
 										{edges.map((edge, i) => {
-											const fromNode = nodes.find(
-												(n) => n.guid === edge.from,
-											);
-											const toNode = nodes.find(
-												(n) => n.guid === edge.to,
-											);
+											const fromNode = nodeByGuid.get(edge.from);
+											const toNode = nodeByGuid.get(edge.to);
+											const fromLayer = fromNode?.layer || 'metadata';
+											const toLayer = toNode?.layer || 'metadata';
 											return (
 												<tr key={i}>
 													<td>
 														<Badge
 															color={
 																layerColor(
-																	fromNode?.layer || '',
+																	fromLayer.startsWith('etl')
+																		? 'dark'
+																		: fromLayer,
 																) as any
 															}
 															isLight
 															className='me-2'>
-															{fromNode?.layer}
+															{fromNode?.layerLabel || 'Metadata'}
 														</Badge>
-														{fromNode?.name || edge.from}
+														{fromNode?.displayName || edge.from}
 													</td>
 													<td className='text-center'>
-														<Icon
-															icon='ArrowForward'
-															color='primary'
-														/>
+														<Icon icon='ArrowForward' color='primary' />
 													</td>
 													<td>
 														<Badge
 															color={
 																layerColor(
-																	toNode?.layer || '',
+																	toLayer.startsWith('etl')
+																		? 'dark'
+																		: toLayer,
 																) as any
 															}
 															isLight
 															className='me-2'>
-															{toNode?.layer}
+															{toNode?.layerLabel || 'Metadata'}
 														</Badge>
-														{toNode?.name || edge.to}
+														{toNode?.displayName || edge.to}
 													</td>
 												</tr>
 											);
@@ -354,7 +247,7 @@ const LineageDetailPage: NextPage = () => {
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
 	props: {
 		// @ts-ignore
-		...(await serverSideTranslations(locale || 'en', ['common', 'menu'])),
+		...(await serverSideTranslations(locale, ['common', 'menu'])),
 	},
 });
 

@@ -96,22 +96,34 @@ IKU_DEFINITIONS = {
 
 # ── Consumption metadata ──────────────────────────────────────────────────
 
+# Dashboard pimpinan (sesuai struktur organisasi ITERA)
+_LEADERSHIP = [
+    "Rektor",
+    "Wakil Rektor Bidang Akademik & Kemahasiswaan",
+    "Wakil Rektor Bidang Keuangan & Umum",
+    "Kepala Biro Akademik Perencanaan dan Umum",
+    "Kepala Bagian Umum dan Akademik",
+    "Dekan Fakultas Sains",
+    "Dekan Fakultas Teknologi Infrastruktur dan Kewilayahan",
+    "Dekan Fakultas Teknologi Industri",
+]
+
 CONSUMPTION_META = {
-    "dim_waktu":       {"consumers": ["Dashboard Pimpinan", "Laporan Tahunan"], "olap_role": "Dimension — drill by time"},
-    "dim_prodi":       {"consumers": ["Dashboard Pimpinan", "LP3M"], "olap_role": "Dimension — drill by prodi/jurusan"},
-    "dim_dosen":       {"consumers": ["Biro SDM", "LPPM"], "olap_role": "Dimension — drill by dosen"},
-    "dim_mahasiswa":   {"consumers": ["Biro Akademik", "Pusat Karir"], "olap_role": "Dimension — drill by mahasiswa"},
-    "dim_topik_penelitian": {"consumers": ["LPPM"], "olap_role": "Dimension — drill by research topic"},
-    "fact_iku1_lulusan": {"consumers": ["Rektor", "Wakil Rektor I"], "olap_role": "Fact — IKU-1 metrics"},
-    "fact_iku2_mbkm":  {"consumers": ["Rektor", "Wakil Rektor I"], "olap_role": "Fact — IKU-2 metrics"},
-    "fact_iku3_dosen_tridarma": {"consumers": ["Rektor", "Wakil Rektor II"], "olap_role": "Fact — IKU-3 metrics"},
-    "fact_iku4_kualifikasi_dosen": {"consumers": ["Rektor", "Wakil Rektor II"], "olap_role": "Fact — IKU-4 metrics"},
-    "fact_iku5_penelitian_pkm": {"consumers": ["Rektor", "Wakil Rektor II"], "olap_role": "Fact — IKU-5 metrics"},
-    "fact_iku6_kerjasama_prodi": {"consumers": ["Rektor", "Wakil Rektor IV"], "olap_role": "Fact — IKU-6 metrics"},
-    "fact_iku7_metode_pembelajaran": {"consumers": ["Rektor", "Wakil Rektor I"], "olap_role": "Fact — IKU-7 metrics"},
-    "fact_iku8_akreditasi_internasional": {"consumers": ["Rektor", "LP3M"], "olap_role": "Fact — IKU-8 metrics"},
-    "fact_tata_kelola": {"consumers": ["Rektor", "Wakil Rektor III"], "olap_role": "Fact — SAKIP & anggaran"},
-    "fact_rekap_iku_institusi": {"consumers": ["Rektor", "Senat", "Kemenristekdikti"], "olap_role": "Fact — executive summary"},
+    "dim_waktu":       {"consumers": _LEADERSHIP[:4], "olap_role": "Dimension — drill by time"},
+    "dim_prodi":       {"consumers": _LEADERSHIP, "olap_role": "Dimension — drill by prodi/jurusan"},
+    "dim_dosen":       {"consumers": [_LEADERSHIP[0], _LEADERSHIP[2], _LEADERSHIP[3]], "olap_role": "Dimension — drill by dosen"},
+    "dim_mahasiswa":   {"consumers": [_LEADERSHIP[0], _LEADERSHIP[1], _LEADERSHIP[4]], "olap_role": "Dimension — drill by mahasiswa"},
+    "dim_topik_penelitian": {"consumers": [_LEADERSHIP[0], _LEADERSHIP[3]], "olap_role": "Dimension — drill by research topic"},
+    "fact_iku1_lulusan": {"consumers": [_LEADERSHIP[0], _LEADERSHIP[1], _LEADERSHIP[3], *_LEADERSHIP[5:]], "olap_role": "Fact — IKU-1 metrics"},
+    "fact_iku2_mbkm":  {"consumers": [_LEADERSHIP[0], _LEADERSHIP[1], _LEADERSHIP[4], *_LEADERSHIP[5:]], "olap_role": "Fact — IKU-2 metrics"},
+    "fact_iku3_dosen_tridarma": {"consumers": [_LEADERSHIP[0], _LEADERSHIP[1], _LEADERSHIP[3]], "olap_role": "Fact — IKU-3 metrics"},
+    "fact_iku4_kualifikasi_dosen": {"consumers": [_LEADERSHIP[0], _LEADERSHIP[1], _LEADERSHIP[3]], "olap_role": "Fact — IKU-4 metrics"},
+    "fact_iku5_penelitian_pkm": {"consumers": [_LEADERSHIP[0], _LEADERSHIP[3], _LEADERSHIP[5]], "olap_role": "Fact — IKU-5 metrics"},
+    "fact_iku6_kerjasama_prodi": {"consumers": [_LEADERSHIP[0], _LEADERSHIP[2], *_LEADERSHIP[5:]], "olap_role": "Fact — IKU-6 metrics"},
+    "fact_iku7_metode_pembelajaran": {"consumers": [_LEADERSHIP[0], _LEADERSHIP[1], _LEADERSHIP[4], *_LEADERSHIP[5:]], "olap_role": "Fact — IKU-7 metrics"},
+    "fact_iku8_akreditasi_internasional": {"consumers": [_LEADERSHIP[0], _LEADERSHIP[3], *_LEADERSHIP[5:]], "olap_role": "Fact — IKU-8 metrics"},
+    "fact_tata_kelola": {"consumers": [_LEADERSHIP[0], _LEADERSHIP[2], _LEADERSHIP[3]], "olap_role": "Fact — SAKIP & anggaran"},
+    "fact_rekap_iku_institusi": {"consumers": _LEADERSHIP, "olap_role": "Fact — executive summary"},
 }
 
 
@@ -202,6 +214,7 @@ def register_gold_entity(table_name: str, profiling: dict) -> dict | None:
             break
 
     kpi_meta = IKU_DEFINITIONS.get(iku_code, {}) if iku_code else {}
+    sample_kpi = profiling.get("sample_kpi", {}) if iku_code else {}
 
     profiling_enriched = {
         "schema": profiling.get("schema", {}),
@@ -215,6 +228,10 @@ def register_gold_entity(table_name: str, profiling: dict) -> dict | None:
             "formula": kpi_meta.get("kpi_formula", ""),
             "satuan": kpi_meta.get("satuan", ""),
             "sumber_renstra": kpi_meta.get("sumber_renstra", ""),
+            "nilai_capaian": sample_kpi.get("nilai_capaian"),
+            "nilai_target": sample_kpi.get("nilai_target"),
+            "status_capaian": sample_kpi.get("status_capaian", ""),
+            "persen_capaian_terhadap_target": sample_kpi.get("persen_capaian_terhadap_target"),
         } if iku_code else {},
         "consumption": {
             "consumers": consumption.get("consumers", []),
@@ -247,6 +264,7 @@ def register_gold_entity(table_name: str, profiling: dict) -> dict | None:
                 "profiling": json.dumps(profiling_enriched),
                 "pii_columns": "[]",
                 "ingested_at": datetime.utcnow().isoformat() + "Z",
+                "enriched_at": datetime.utcnow().isoformat() + "Z",
             },
             "classifications": classifications,
         }

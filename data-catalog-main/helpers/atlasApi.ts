@@ -101,10 +101,13 @@ export async function getMetrics(): Promise<any> {
 }
 
 export function layerFromQualifiedName(qn: string): string {
+	if (!qn) return 'unknown';
 	if (qn.startsWith('staging.')) return 'staging';
 	if (qn.startsWith('bronze.')) return 'bronze';
 	if (qn.startsWith('silver.')) return 'silver';
 	if (qn.startsWith('gold.')) return 'gold';
+	// Proses ETL: etl.staging_to_bronze.* — bukan layer data; gunakan helpers/lineageDisplay.ts
+	if (qn.startsWith('etl.')) return 'etl';
 	return 'unknown';
 }
 

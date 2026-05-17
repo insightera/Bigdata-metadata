@@ -20,6 +20,14 @@ import Badge from '../../components/bootstrap/Badge';
 import Button from '../../components/bootstrap/Button';
 import Progress from '../../components/bootstrap/Progress';
 import Spinner from '../../components/bootstrap/Spinner';
+import type { AtlasEntity } from '../../helpers/atlasApi';
+import {
+	LEADERSHIP_CONSUMERS,
+	kpiStatusColor,
+	matchIkuEntity,
+	mergeAtlasEntities,
+	parseProfiling,
+} from '../../helpers/kpiAtlas';
 
 const IKU_DEFINITIONS = [
 	{
@@ -88,25 +96,63 @@ const IKU_DEFINITIONS = [
 	},
 ];
 
+async function fetchAtlasSearch(params: Record<string, string>) {
+	const qs = new URLSearchParams(params).toString();
+	const res = await fetch(`/api/atlas/search?${qs}`);
+	if (!res.ok) return { entities: [] as AtlasEntity[], approximateCount: 0 };
+	return res.json();
+}
+
+function formatCapaian(value: number | null | undefined, code: string): string {
+	if (value == null || Number.isNaN(value)) return '—';
+	if (code === 'IKU-5') return value.toFixed(2);
+	return `${value.toFixed(1)}%`;
+}
+
 const KpiDashboard: NextPage = () => {
 	const router = useRouter();
-	const [kpiEntities, setKpiEntities] = useState<any[]>([]);
+	const [goldEntities, setGoldEntities] = useState<AtlasEntity[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [goldCount, setGoldCount] = useState(0);
+	const [fetchError, setFetchError] = useState<string | null>(null);
 
 	const fetchKpiData = useCallback(async () => {
 		setLoading(true);
+		setFetchError(null);
 		try {
-			const [kpiRes, goldRes] = await Promise.all([
-				fetch('/api/atlas/search?typeName=lakehouse_dataset&classification=KPI_Metric&limit=50'),
-				fetch('/api/atlas/search?typeName=lakehouse_dataset&classification=Gold_Layer&limit=1'),
+			const [kpiRes, goldRes, queryRes] = await Promise.all([
+				fetchAtlasSearch({
+					typeName: 'lakehouse_dataset',
+					classification: 'KPI_Metric',
+					limit: '50',
+				}),
+				fetchAtlasSearch({
+					typeName: 'lakehouse_dataset',
+					classification: 'Gold_Layer',
+					limit: '100',
+				}),
+				fetchAtlasSearch({
+					typeName: 'lakehouse_dataset',
+					query: 'gold.fact_iku',
+					limit: '50',
+				}),
 			]);
-			const kpiData = await kpiRes.json();
-			const goldData = await goldRes.json();
-			setKpiEntities(kpiData.entities || []);
-			setGoldCount(goldData.approximateCount || 0);
-		} catch {
-			setKpiEntities([]);
+
+			const merged = mergeAtlasEntities(
+				kpiRes.entities || [],
+				goldRes.entities || [],
+				queryRes.entities || [],
+			).filter(
+				(e) =>
+					e.attributes?.layer === 'gold' ||
+					(e.attributes?.qualifiedName || '').startsWith('gold.'),
+			);
+
+			setGoldEntities(merged);
+			setGoldCount(goldRes.approximateCount || merged.length);
+		} catch (err: any) {
+			setGoldEntities([]);
+			setFetchError(err?.message || 'Gagal memuat metadata Atlas');
 		} finally {
 			setLoading(false);
 		}
@@ -115,6 +161,10 @@ const KpiDashboard: NextPage = () => {
 	useEffect(() => {
 		fetchKpiData();
 	}, [fetchKpiData]);
+
+	const matchedIkuCount = IKU_DEFINITIONS.filter((iku) =>
+		matchIkuEntity(goldEntities, iku),
+	).length;
 
 	return (
 		<PageWrapper>
@@ -131,7 +181,13 @@ const KpiDashboard: NextPage = () => {
 				</SubHeaderLeft>
 			</SubHeader>
 			<Page>
-				{/* Summary cards */}
+				{fetchError && (
+					<div className='alert alert-warning mb-4' role='alert'>
+						{fetchError}. Pastikan Atlas berjalan dan pipeline Gold sudah
+						dijalankan.
+					</div>
+				)}
+
 				<div className='row mb-4'>
 					<div className='col-md-3'>
 						<Card shadow='sm'>
@@ -146,8 +202,8 @@ const KpiDashboard: NextPage = () => {
 						<Card shadow='sm'>
 							<CardBody className='text-center py-4'>
 								<Icon icon='BarChart' size='3x' color='primary' />
-								<h2 className='mt-3 mb-1 fw-bold'>8</h2>
-								<p className='text-muted mb-0'>IKU Metrics</p>
+								<h2 className='mt-3 mb-1 fw-bold'>{matchedIkuCount}/8</h2>
+								<p className='text-muted mb-0'>IKU Terdaftar Atlas</p>
 							</CardBody>
 						</Card>
 					</div>
@@ -171,7 +227,6 @@ const KpiDashboard: NextPage = () => {
 					</div>
 				</div>
 
-				{/* IKU Cards */}
 				<div className='row mb-4'>
 					<div className='col-12'>
 						<Card shadow='sm'>
@@ -179,8 +234,7 @@ const KpiDashboard: NextPage = () => {
 								<CardLabel icon='Assessment' iconColor='primary'>
 									<CardTitle>Indikator Kinerja Utama (IKU)</CardTitle>
 									<CardSubTitle>
-										Target Renstra ITERA 2020-2024 — Fact tables di Gold
-										layer
+										Capaian dari fact tables Gold — metadata KPI di Atlas
 									</CardSubTitle>
 								</CardLabel>
 								<CardActions>
@@ -199,28 +253,42 @@ const KpiDashboard: NextPage = () => {
 									<div className='text-center py-5'>
 										<Spinner color='primary' size='3rem' />
 									</div>
+								) : matchedIkuCount === 0 ? (
+									<div className='text-center py-4 text-muted'>
+										<Icon icon='Info' size='3x' className='mb-3' />
+										<p className='mb-2'>
+											Belum ada entitas IKU di Atlas. Jalankan pipeline{' '}
+											<code>silver_to_gold</code> lalu registrasi metadata
+											Gold.
+										</p>
+									</div>
 								) : (
 									<div className='row'>
 										{IKU_DEFINITIONS.map((iku) => {
-											const matched = kpiEntities.find(
-												(e) =>
-													e.attributes?.name === iku.fact,
-											);
-											const profiling = (() => {
-												try {
-													return JSON.parse(
-														matched?.attributes?.profiling ||
-															'{}',
-													);
-												} catch {
-													return {};
-												}
-											})();
+											const matched = matchIkuEntity(goldEntities, iku);
+											const profiling = parseProfiling(matched);
 											const kpiMeta = profiling.kpi || {};
-											const consumption =
-												profiling.consumption || {};
-											const rowCount =
-												matched?.attributes?.row_count || 0;
+											const rowCount = matched?.attributes?.row_count || 0;
+
+											const capaian = kpiMeta.nilai_capaian ?? null;
+											const target =
+												kpiMeta.nilai_target ?? iku.target2024;
+											const status = kpiMeta.status_capaian as
+												| string
+												| undefined;
+											const satuan =
+												kpiMeta.satuan ||
+												(iku.code === 'IKU-5' ? 'Rasio' : '%');
+
+											const progressPct =
+												capaian != null && target
+													? Math.min(
+															iku.code === 'IKU-5'
+																? (capaian / target) * 100
+																: capaian,
+															100,
+														)
+													: 0;
 
 											return (
 												<div
@@ -247,6 +315,16 @@ const KpiDashboard: NextPage = () => {
 																		}>
 																		{iku.code}
 																	</Badge>
+																	{status && (
+																		<Badge
+																			color={kpiStatusColor(
+																				status,
+																			)}
+																			isLight
+																			className='ms-1'>
+																			{status}
+																		</Badge>
+																	)}
 																</div>
 															</div>
 
@@ -257,22 +335,29 @@ const KpiDashboard: NextPage = () => {
 															<div className='mb-2'>
 																<div className='d-flex justify-content-between'>
 																	<small className='text-muted'>
-																		Target 2024
+																		Capaian
 																	</small>
 																	<strong>
-																		{iku.code === 'IKU-5'
-																			? iku.target2024
-																			: `${iku.target2024}%`}
+																		{formatCapaian(
+																			capaian,
+																			iku.code,
+																		)}
 																	</strong>
 																</div>
+																<div className='d-flex justify-content-between mb-1'>
+																	<small className='text-muted'>
+																		Target
+																	</small>
+																	<small>
+																		{formatCapaian(
+																			target,
+																			iku.code,
+																		)}{' '}
+																		{satuan}
+																	</small>
+																</div>
 																<Progress
-																	value={Math.min(
-																		iku.code === 'IKU-5'
-																			? iku.target2024 *
-																				100
-																			: iku.target2024,
-																		100,
-																	)}
+																	value={progressPct}
 																	color={
 																		iku.color as any
 																	}
@@ -296,8 +381,10 @@ const KpiDashboard: NextPage = () => {
 																	{rowCount
 																		? `${Number(
 																				rowCount,
-																			).toLocaleString()} rows`
-																		: 'No data'}
+																			).toLocaleString()} baris`
+																		: matched
+																			? '0 baris'
+																			: 'Belum terdaftar'}
 																</small>
 																{matched && (
 																	<Button
@@ -331,7 +418,6 @@ const KpiDashboard: NextPage = () => {
 					</div>
 				</div>
 
-				{/* Star Schema overview */}
 				<div className='row'>
 					<div className='col-md-6 mb-4'>
 						<Card shadow='sm' stretch>
@@ -397,48 +483,7 @@ const KpiDashboard: NextPage = () => {
 								</CardLabel>
 							</CardHeader>
 							<CardBody>
-								{[
-									{
-										role: 'Rektor',
-										desc: 'Executive summary all IKU',
-										icon: 'Person',
-									},
-									{
-										role: 'Wakil Rektor I',
-										desc: 'IKU-1, IKU-2, IKU-7 (Akademik)',
-										icon: 'School',
-									},
-									{
-										role: 'Wakil Rektor II',
-										desc: 'IKU-3, IKU-4, IKU-5 (SDM & Riset)',
-										icon: 'Science',
-									},
-									{
-										role: 'Wakil Rektor III',
-										desc: 'SAKIP & Anggaran',
-										icon: 'AccountBalance',
-									},
-									{
-										role: 'Wakil Rektor IV',
-										desc: 'IKU-6 (Kerjasama)',
-										icon: 'Handshake',
-									},
-									{
-										role: 'LP3M',
-										desc: 'IKU-8 (Akreditasi)',
-										icon: 'VerifiedUser',
-									},
-									{
-										role: 'LPPM',
-										desc: 'IKU-5 (Penelitian & PkM)',
-										icon: 'Biotech',
-									},
-									{
-										role: 'Senat & Kemenristekdikti',
-										desc: 'Rekap IKU institusi',
-										icon: 'AccountTree',
-									},
-								].map((consumer) => (
+								{LEADERSHIP_CONSUMERS.map((consumer) => (
 									<div
 										key={consumer.role}
 										className='d-flex align-items-center py-2 border-bottom'>
