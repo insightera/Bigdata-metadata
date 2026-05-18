@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import type { NextPage } from 'next';
 import { GetStaticProps } from 'next';
 import Head from 'next/head';
+import Link from 'next/link';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { mergeGlossaryTerms } from '../../helpers/glossaryFromMetadata';
 import PageWrapper from '../../layout/PageWrapper/PageWrapper';
 import SubHeader, { SubHeaderLeft, SubHeaderRight } from '../../layout/SubHeader/SubHeader';
 import Page from '../../layout/Page/Page';
@@ -46,12 +48,14 @@ interface GlossaryTerm {
 	term: string;
 	definition: string;
 	category: string;
-	source: 'atlas' | 'local';
+	source: 'atlas' | 'silver_metadata' | 'gold_metadata' | 'local';
+	related_assets?: string[];
 }
 
 const GlossaryPage: NextPage = () => {
 	const [terms, setTerms] = useState<GlossaryTerm[]>([]);
 	const [atlasGlossaries, setAtlasGlossaries] = useState<any[]>([]);
+	const [silverSyncedCount, setSilverSyncedCount] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const [atlasConnected, setAtlasConnected] = useState(false);
 	const [showAddModal, setShowAddModal] = useState(false);
@@ -66,13 +70,36 @@ const GlossaryPage: NextPage = () => {
 		}));
 
 		try {
-			const res = await fetch('/api/atlas/glossary');
-			if (res.ok) {
-				const glossaries = await res.json();
+			const [glossaryRes, metadataRes] = await Promise.all([
+				fetch('/api/atlas/glossary'),
+				fetch('/api/atlas/glossary-terms'),
+			]);
+
+			let atlasTerms: { term: string; definition: string; category: string; guid?: string }[] =
+				[];
+			let metadataTerms: GlossaryTerm[] = [];
+			let fallbackFromApi = localTerms;
+
+			if (metadataRes.ok) {
+				const meta = await metadataRes.json();
+				metadataTerms = (meta.terms || []).map((t: GlossaryTerm) => ({
+					...t,
+					source: t.source || 'silver_metadata',
+				}));
+				if (meta.fallback?.length) {
+					fallbackFromApi = meta.fallback.map((t: GlossaryTerm) => ({
+						...t,
+						source: 'local' as const,
+					}));
+				}
+				setSilverSyncedCount(meta.silverEntityCount ?? 0);
+			}
+
+			if (glossaryRes.ok) {
+				const glossaries = await glossaryRes.json();
 				setAtlasGlossaries(glossaries);
 				setAtlasConnected(true);
 
-				const atlasTerms: GlossaryTerm[] = [];
 				for (const g of glossaries) {
 					if (g.terms) {
 						for (const t of g.terms) {
@@ -81,20 +108,14 @@ const GlossaryPage: NextPage = () => {
 								term: t.displayText || t.name,
 								definition: t.shortDescription || t.longDescription || '',
 								category: g.name || 'Atlas',
-								source: 'atlas',
 							});
 						}
 					}
 				}
-
-				if (atlasTerms.length > 0) {
-					setTerms([...atlasTerms, ...localTerms]);
-				} else {
-					setTerms(localTerms);
-				}
-			} else {
-				setTerms(localTerms);
 			}
+
+			const merged = mergeGlossaryTerms(atlasTerms, metadataTerms, fallbackFromApi);
+			setTerms(merged);
 		} catch {
 			setTerms(localTerms);
 		} finally {
@@ -149,6 +170,21 @@ const GlossaryPage: NextPage = () => {
 		Quality: 'secondary',
 		Atlas: 'dark',
 		Custom: 'primary',
+		silver_metadata: 'info',
+		gold_metadata: 'warning',
+	};
+
+	const sourceLabel = (source: GlossaryTerm['source']) => {
+		switch (source) {
+			case 'atlas':
+				return 'Atlas Glossary';
+			case 'silver_metadata':
+				return 'Silver BUSINESS_METADATA';
+			case 'gold_metadata':
+				return 'Gold KPI';
+			default:
+				return 'Local';
+		}
 	};
 
 	return (
@@ -193,9 +229,9 @@ const GlossaryPage: NextPage = () => {
 									<Icon icon='Info' color='primary' size='lg' className='me-2' />
 									<small>
 										<strong>Lifecycle Stage 6 — Glossary Terms:</strong>{' '}
-										Glossary terms memperkaya konteks bisnis aset data.
-										Terms dari Atlas Glossary API ditampilkan bersama definisi lokal.
-										Pada <strong>Stage 9</strong>, enrichment ini dilakukan via Atlas REST API.
+										Istilah dari Atlas Glossary API,{' '}
+										<strong>BUSINESS_METADATA.glossary_terms</strong> pada entitas Silver (
+										{silverSyncedCount} aset), dan definisi lokal digabung tanpa duplikasi.
 									</small>
 								</div>
 							</CardBody>
@@ -243,14 +279,17 @@ const GlossaryPage: NextPage = () => {
 																Term
 															</th>
 															<th>Definition</th>
-															<th style={{ width: 100 }}>
+															<th style={{ width: 140 }}>
 																Source
+															</th>
+															<th style={{ width: 160 }}>
+																Related
 															</th>
 														</tr>
 													</thead>
 													<tbody>
 														{catTerms.map((t) => (
-															<tr key={t.term}>
+															<tr key={`${t.term}-${t.source}`}>
 																<td>
 																	<strong>{t.term}</strong>
 																</td>
@@ -258,15 +297,36 @@ const GlossaryPage: NextPage = () => {
 																<td>
 																	<Badge
 																		color={
-																			t.source === 'atlas'
-																				? 'success'
-																				: ('secondary' as any)
+																			(categoryColors[t.source] ||
+																				'secondary') as any
 																		}
 																		isLight>
-																		{t.source === 'atlas'
-																			? 'Atlas'
-																			: 'Local'}
+																		{sourceLabel(t.source)}
 																	</Badge>
+																</td>
+																<td>
+																	{t.related_assets?.length ? (
+																		<small>
+																			{t.related_assets
+																				.slice(0, 2)
+																				.map((qn) => (
+																					<Link
+																						key={qn}
+																						href={`/catalog/${encodeURIComponent(qn)}`}
+																						className='d-block'>
+																						{qn.split('@')[0]}
+																					</Link>
+																				))}
+																			{t.related_assets.length > 2 && (
+																				<span className='text-muted'>
+																					+{t.related_assets.length - 2}{' '}
+																					more
+																				</span>
+																			)}
+																		</small>
+																	) : (
+																		<span className='text-muted'>—</span>
+																	)}
 																</td>
 															</tr>
 														))}

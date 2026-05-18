@@ -24,6 +24,7 @@ import Input from '../../components/bootstrap/forms/Input';
 import Textarea from '../../components/bootstrap/forms/Textarea';
 import Alert from '../../components/bootstrap/Alert';
 import { layerFromQualifiedName, layerColor, classificationColor } from '../../helpers/atlasApi';
+import { EntityMetadataSections } from '../../components/catalog/EntityMetadataSections';
 
 const LIFECYCLE_STAGES = [
 	{ id: 1, label: 'Domain Creation', icon: 'FolderOpen', color: 'primary' },
@@ -436,6 +437,16 @@ const DatasetDetailPage: NextPage = () => {
 					</div>
 				</div>
 
+				{/* Profiling, quality, business, compliance (Bronze / Silver) */}
+				<div className='row'>
+					<EntityMetadataSections
+						layer={layer}
+						profiling={profiling}
+						piiColumns={piiColumns}
+						enrichedAt={attrs.enriched_at}
+					/>
+				</div>
+
 				{/* Schema */}
 				{Object.keys(schema).length > 0 && (
 					<div className='row mb-4'>
@@ -525,6 +536,20 @@ const DatasetDetailPage: NextPage = () => {
 											</small>
 											<span>{kpiMeta.sumber_renstra}</span>
 										</div>
+										{kpiMeta.nilai_capaian != null && (
+											<div className='mb-2'>
+												<small className='text-muted d-block'>Capaian</small>
+												<strong>
+													{kpiMeta.nilai_capaian}
+													{kpiMeta.satuan ? ` ${kpiMeta.satuan}` : ''}
+												</strong>
+												{kpiMeta.nilai_target != null && (
+													<span className='text-muted ms-2'>
+														/ target {kpiMeta.nilai_target}
+													</span>
+												)}
+											</div>
+										)}
 									</CardBody>
 								</Card>
 							</div>

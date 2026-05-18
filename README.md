@@ -14,7 +14,7 @@ Repositori ini mendukung penelitian big data pada **metadata-driven governance**
 
 ![Apache Spark](https://img.shields.io/badge/Apache_Spark-3.5.1-E25A1C?logo=apachespark&logoColor=white)
 ![PySpark](https://img.shields.io/badge/PySpark-3.5.1-E25A1C?logo=apachespark&logoColor=white)
-![Apache Iceberg](https://img.shields.io/badge/Apache_Iceberg-1.5.2-4E9BCD?logo=data:image/svg+xml;base64,&logoColor=white)
+![Apache Iceberg](https://img.shields.io/badge/Apache_Iceberg-1.5.2-4E9BCD?logo=https://raw.githubusercontent.com/apache/iceberg/main/site/static/favicon.ico&logoColor=white)
 ![MinIO](https://img.shields.io/badge/MinIO-latest-C72E49?logo=minio&logoColor=white)
 ![Apache Hive](https://img.shields.io/badge/Apache_Hive-4.0.0-FDEE21?logo=apachehive&logoColor=black)
 
@@ -712,7 +712,32 @@ Metadata per Layer:
 
 ---
 
-## 10. Berkas pendukung di repositori
+## 10. Eksperimen end-to-end & pencatatan metrik
+
+Panduan operasional menjalankan seluruh pipeline metadata, mengumpulkan JSON metrik ke folder `metrics/` di VM/host, dan mengisi template laporan BAB IV.
+
+| Resource | Keterangan |
+|----------|------------|
+| [`docs/eksperimen/README.md`](docs/eksperimen/README.md) | Alur fase 0–8, perintah, pemetaan subbab |
+| [`docs/eksperimen/templates/`](docs/eksperimen/templates/) | Template pencatatan hasil penelitian |
+| [`scripts/benchmark/README.md`](scripts/benchmark/README.md) | Skrip benchmark otomatis |
+| [`scripts/dags/metadata_full_experiment.py`](scripts/dags/metadata_full_experiment.py) | DAG Airflow E2E |
+| [`metrics/`](metrics/) | Output JSON (volume Docker `./metrics`) |
+
+**Jalankan cepat:**
+
+```bash
+python3 scripts/generate_bronze_data.py --mode full
+./start.sh
+mkdir -p metrics && chmod 1777 metrics
+docker exec lhmeta-airflow-scheduler airflow dags trigger metadata_full_experiment
+```
+
+Setelah sukses, buka `metrics/experiment_summary_latest.json`, `metadata_quality_latest.json`, dan portal http://localhost:13000/metadata-quality untuk screenshot §4.1.5–4.1.6.
+
+---
+
+## 11. Berkas pendukung di repositori
 
 | Berkas | Keterangan |
 |--------|------------|
@@ -725,6 +750,10 @@ Metadata per Layer:
 | `atlas-conf/atlas-application.properties` | Konfigurasi Atlas |
 | `atlas-conf/hbase-site.xml` | Override ZK HBase untuk klien di container Atlas (service `hbase`) |
 | `scripts/dags/metadata_pipeline.py` | DAG orkestrasi metadata per layer |
+| `scripts/dags/metadata_full_experiment.py` | DAG eksperimen E2E + agregasi metrik |
+| `docs/eksperimen/README.md` | Panduan eksperimen & template laporan |
+| `scripts/benchmark/` | Skrip evaluasi kualitas metadata & inventaris Atlas |
+| `metrics/` | Folder output metrik eksperimen (di-mount ke Airflow) |
 | `scripts/generate_bronze_data.py` | Generator data sintetis ITERA (12 CSV) |
 | **Pipeline 1: Staging → Bronze** | |
 | `scripts/spark/staging_to_bronze.py` | PySpark ETL CSV → Iceberg |

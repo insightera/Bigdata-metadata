@@ -582,6 +582,9 @@ GOLD_TABLES = [
 
 def run_silver_to_gold() -> dict:
     """Entry-point: build star schema Gold layer."""
+    from spark.pipeline_metrics import persist_pipeline_run_metrics, utc_now
+
+    started_at = utc_now()
     spark = get_spark_session()
 
     try:
@@ -648,6 +651,14 @@ def run_silver_to_gold() -> dict:
         total_rows = sum(r.get("row_count", 0) for r in results.values() if r.get("written"))
         logger.info("\n✅ Gold complete: %d/%d tables, %s total rows",
                      written, len(results), f"{total_rows:,}")
+        ended_at = utc_now()
+        path = persist_pipeline_run_metrics(
+            pipeline="silver_to_gold",
+            results=results,
+            started_at=started_at,
+            ended_at=ended_at,
+        )
+        logger.info("Pipeline metrics → %s", path)
         return results
 
     finally:

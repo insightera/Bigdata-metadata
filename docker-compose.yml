@@ -30,6 +30,7 @@ x-airflow-common-env: &airflow-common-env
   AIRFLOW__CORE__FERNET_KEY: "81HqDtbqAywKSOumSha3BhWNOdQ26slT6K0YaZeZyPs="
   AIRFLOW__WEBSERVER__SECRET_KEY: "lakehouse_secret_key_2024"
   PYTHONPATH: "/opt/airflow/scripts"
+  META_METRICS_DIR: "/opt/airflow/metrics"
   # PySpark driver (Airflow) + executors (Spark workers) must share the same Python minor version (3.10)
   PYSPARK_PYTHON: python3
   PYSPARK_DRIVER_PYTHON: python3
@@ -466,8 +467,11 @@ services:
       - ./scripts/dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts:ro
       - ./data/staging:/opt/airflow/data/staging:ro
+      - ./metrics:/opt/airflow/metrics
     entrypoint: >
       /bin/bash -c "
+        mkdir -p /opt/airflow/metrics &&
+        chmod 1777 /opt/airflow/metrics &&
         airflow db init &&
         airflow users create --username airflow --password airflow --firstname Air --lastname Flow --role Admin --email airflow@lakehouse.local;
         echo '✅ Airflow DB initialized';
@@ -491,6 +495,7 @@ services:
       - ./scripts/dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts:ro
       - ./data/staging:/opt/airflow/data/staging:ro
+      - ./metrics:/opt/airflow/metrics
     ports:
       - "${LHMETA_AIRFLOW_WEB_PORT:-18681}:8080"   # Airflow Web UI (host)
     healthcheck:
@@ -515,6 +520,7 @@ services:
       - ./scripts/dags:/opt/airflow/dags
       - ./scripts:/opt/airflow/scripts:ro
       - ./data/staging:/opt/airflow/data/staging:ro
+      - ./metrics:/opt/airflow/metrics
 
   # ─────────────────────────────────────────────
   # JUPYTER NOTEBOOK (PySpark + Iceberg)

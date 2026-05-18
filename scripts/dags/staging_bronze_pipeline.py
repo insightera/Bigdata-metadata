@@ -202,6 +202,7 @@ with DAG(
     start_date=datetime(2024, 1, 1),
     schedule_interval=None,
     catchup=False,
+    max_active_runs=1,
     tags=["lakehouse", "metadata", "iceberg", "atlas", "bronze", "pipeline"],
 ) as dag:
 

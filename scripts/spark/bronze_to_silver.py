@@ -520,6 +520,9 @@ SILVER_TRANSFORMS = [
 
 def run_bronze_to_silver() -> dict:
     """Entry-point: proses semua tabel Bronze → Silver."""
+    from spark.pipeline_metrics import persist_pipeline_run_metrics, utc_now
+
+    started_at = utc_now()
     spark = get_spark_session()
 
     try:
@@ -583,6 +586,14 @@ def run_bronze_to_silver() -> dict:
             "\nPipeline complete: %d/%d tables written, %s total rows",
             written_count, len(SILVER_TRANSFORMS), f"{total_rows:,}",
         )
+        ended_at = utc_now()
+        path = persist_pipeline_run_metrics(
+            pipeline="bronze_to_silver",
+            results=results,
+            started_at=started_at,
+            ended_at=ended_at,
+        )
+        logger.info("Pipeline metrics → %s", path)
         return results
 
     finally:
